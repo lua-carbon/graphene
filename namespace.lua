@@ -1,5 +1,5 @@
 --[[
-	Lua Namespace 0.1.0
+	Lua Namespace 0.2.0
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
 
@@ -22,7 +22,7 @@
 ]]
 
 -- Current namespace version
-local n_version = {0, 1, 0, "alpha"}
+local n_version = {0, 2, 0, "alpha"}
 local n_versionstring = ("%s.%s.%s-%s"):format(unpack(n_version))
 
 -- Hopeful dependencies
@@ -173,7 +173,7 @@ local n_file = support.debug and debug.getinfo(1, "S").source:match("@(.+)$")
 
 if (n_file) then
 	-- Normalize slashes; this is okay for Windows
-	n_root = n_file:gsub("\\", "/")
+	n_root = n_file:gsub("\\", "/"):match("^(.+)/.-$")
 else
 	print("Could not locate lua-namespace source file; is debug info stripped?")
 	print("This code path is untested.")
@@ -194,7 +194,7 @@ local N = {
 	versionstring = n_versionstring, -- Version string for user-facing reporting
 
 	config = {
-		path = {n_root} -- Where namespace will look for modules to load
+		lib = true
 	}
 }
 
@@ -240,6 +240,17 @@ local function module_join(first, second)
 	return ((first .. "." .. second):gsub("%.%.+", "."))
 end
 
+--[[
+	(string result) path_join(string first, string second)
+		first: The first part of the path.
+		second: The second part of the path.
+
+	Joins two path names with a period and removes any extraneous slashes.
+]]
+local function path_join(first, second)
+	return ((first .. "/" .. second):gsub("//+", "/"):gsub("/+$", ""))
+end
+
 -- Filesystem Abstractions
 
 --[[
@@ -250,8 +261,12 @@ end
 ]]
 function N.fs:get_file(path)
 	for i, provider in ipairs(self.providers) do
-		if (provider.is_file and provider:is_file(path)) then
-			return provider:get_file(path)
+		if (provider.get_file) then
+			local file = provider:get_file(path)
+
+			if (file) then
+				return file
+			end
 		end
 	end
 
@@ -266,8 +281,12 @@ end
 ]]
 function N.fs:get_directory(path)
 	for i, provider in ipairs(self.providers) do
-		if (provider.is_directory and provider:is_directory(path)) then
-			return provider:get_directory(path)
+		if (provider.get_directory) then
+			local directory = provider:get_directory(path)
+
+			if (directory) then
+				return directory
+			end
 		end
 	end
 
@@ -335,172 +354,13 @@ end
 	Closes the directory, allowing it to be reused by the system.
 ]]
 
--- Virtual Filesystem for namespace
--- Used when packing for platforms that don't have real filesystem access
-do
-	local vfs = {
-		id = "vfs",
-		name = "Virtual Filesystem",
-
-		nodes = {},
-		directory = true
-	}
-
-	table.insert(N.fs.providers, vfs)
-
-	-- file:read() method
-	local function file_read(self)
-		return self._contents
-	end
-
-	-- file:close() method
-	-- a stub, since this doesn't apply to a VFS
-	local function file_close()
-	end
-
-	-- directory:list() method
-	local function directory_list(self)
-		return self._nodes
-	end
-
-	-- directory:close() method
-	-- a stub, since this doesn't apply to a VFS
-	local function directory_close()
-	end
-
-	-- Starts at a root node and navigates according to a module name
-	-- Add auto_dir to automatically create directories
-	-- If the path does not exist, or cannot be reached due to an invalid node,
-	-- the function will return nil, the furthest location reached, and a list of node names navigated.
-	function vfs:navigate(path, auto_dir)
-		local location = self
-		local nodes = {}
-
-		for node in path:gmatch("[^%.]+") do
-			if (not location.nodes) then
-				return nil, location, nodes
-			end
-
-			table.insert(nodes, node)
-
-			if (location.nodes[node]) then
-				location = location.nodes[node]
-			elseif (auto_dir) then
-				location = vfs:add_directory(table.concat(nodes, "."))
-			else
-				return nil, location, nodes
-			end
-		end
-
-		return location
-	end
-
-	-- Performs string parsing and navigates to the parent node of a given path
-	function vfs:navigate_leafed(path, auto_dir)
-		local leafless, leaf = path:match("^(.-)%.([^%.]+)$")
-
-		if (leafless) then
-			local parent = self:navigate(leafless, auto_dir)
-
-			-- Couldn't get there! Ouch!
-			if (not parent) then
-				return nil, ("Could not navigate to parent node '%s': invalid path"):format(leafless)
-			end
-
-			if (not parent.directory) then
-				return nil, ("Could not create node in node '%s': not a directory"):format(leafless)
-			end
-
-			return parent, leafless, leaf
-		else
-			leafless = ""
-			leaf = path
-
-			return self, leafless, leaf
-		end
-	end
-
-	function vfs:get_file(path)
-		local object = self:navigate(path)
-
-		if (object) then
-			return {
-				_contents = object.contents,
-				read = file_read,
-				close = file_close,
-				path = path
-			}
-		end
-	end
-
-	function vfs:is_file(path)
-		local object = self:navigate(path)
-
-		return (object and object.file)
-	end
-
-	function vfs:add_file(path, contents)
-		local parent, leafless, leaf = self:navigate_leafed(path, true)
-
-		-- leafless contains error state if parent is nil
-		if (not parent) then
-			return nil, leafless
-		end
-
-		local node = {
-			file = true,
-			contents = contents
-		}
-
-		parent.nodes[leaf] = node
-
-		return node
-	end
-
-	function vfs:get_directory(path)
-		local object = self:navigate(path)
-
-		if (object) then
-			return {
-				_nodes = object.nodes,
-				list = directory_read,
-				close = directory_close,
-				path = path
-			}
-		end
-	end
-
-	function vfs:is_directory(path)
-		local object = self:navigate(path)
-
-		return (object and object.directory)
-	end
-
-	function vfs:add_directory(path)
-		local parent, leafless, leaf = self:navigate_leafed(path)
-
-		-- leafless contains error state if parent is nil
-		if (not parent) then
-			return nil, leafless
-		end
-
-		local node = {
-			directory = true,
-			nodes = {}
-		}
-
-		parent.nodes[leaf] = node
-
-		return node
-	end
-end
-
 -- Only support the full filesystem if we have LFS
 -- FS provider to read from the actual filesystem
 if (support.io and support.lfs) then
 	local full_fs = {
 		id = "io",
-		name = "Full Filesystem"
+		name = "Full Filesystem",
+		path = {n_root}
 	}
 
 	table.insert(N.fs.providers, full_fs)
@@ -548,22 +408,28 @@ if (support.io and support.lfs) then
 	function full_fs:get_file(path, filepath)
 		filepath = filepath or module_to_file(path)
 
-		if (self:is_file(path, filepath)) then
-			local file = file_buffer[#file_buffer]
-			file_buffer[#file_buffer] = nil
+		for i, base in ipairs(self.path) do
+			local fullpath = path_join(base, filepath)
 
-			if (file) then
-				file.path = path
-				file.filepath = filepath
+			if (self:is_file(path, fullpath)) then
+				local file = file_buffer[#file_buffer]
+				file_buffer[#file_buffer] = nil
 
-				return file
-			else
-				return {
-					close = file_close,
-					read = file_read,
-					path = path,
-					filepath = filepath
-				}
+				if (file) then
+					file.path = path
+					file.filepath = filepath
+
+					return file
+				else
+					return {
+						close = file_close,
+						read = file_read,
+						path = path,
+						filepath = fullpath
+					}
+				end
+
+				break
 			end
 		end
 	end
@@ -579,22 +445,28 @@ if (support.io and support.lfs) then
 	function full_fs:get_directory(path, filepath)
 		filepath = filepath or module_to_file(path, true)
 
-		if (self:is_directory(path, filepath)) then
-			local directory = directory_buffer[#directory_buffer]
-			directory_buffer[#directory_buffer] = nil
+		for i, base in ipairs(self.path) do
+			local fullpath = path_join(base, filepath)
 
-			if (directory) then
-				directory.path = path
-				directory.filepath = filepath
+			if (self:is_directory(path, fullpath)) then
+				local directory = directory_buffer[#directory_buffer]
+				directory_buffer[#directory_buffer] = nil
 
-				return directory
-			else
-				return {
-					close = directory_close,
-					list = directory_list,
-					path = path,
-					filepath = filepath
-				}
+				if (directory) then
+					directory.path = path
+					directory.filepath = fullpath
+
+					return directory
+				else
+					return {
+						close = directory_close,
+						list = directory_list,
+						path = path,
+						filepath = fullpath
+					}
+				end
+
+				break
 			end
 		end
 	end
@@ -705,9 +577,188 @@ end
 if (support.roblox) then
 end
 
+-- Virtual Filesystem for namespace
+-- Used when packing for platforms that don't have real filesystem access
+do
+	local vfs = {
+		id = "vfs",
+		name = "Virtual Filesystem",
+		enabled = false,
+
+		nodes = {},
+		directory = true
+	}
+
+	table.insert(N.fs.providers, vfs)
+
+	-- file:read() method
+	local function file_read(self)
+		return self._contents
+	end
+
+	-- file:close() method
+	-- a stub, since this doesn't apply to a VFS
+	local function file_close()
+	end
+
+	-- directory:list() method
+	local function directory_list(self)
+		return self._nodes
+	end
+
+	-- directory:close() method
+	-- a stub, since this doesn't apply to a VFS
+	local function directory_close()
+	end
+
+	-- Starts at a root node and navigates according to a module name
+	-- Add auto_dir to automatically create directories
+	-- If the path does not exist, or cannot be reached due to an invalid node,
+	-- the function will return nil, the furthest location reached, and a list of node names navigated.
+	function vfs:navigate(path, auto_dir)
+		local location = self
+		local nodes = {}
+
+		for node in path:gmatch("[^%.]+") do
+			if (not location.nodes) then
+				return nil, location, nodes
+			end
+
+			table.insert(nodes, node)
+
+			if (location.nodes[node]) then
+				location = location.nodes[node]
+			elseif (auto_dir) then
+				location = vfs:add_directory(table.concat(nodes, "."))
+			else
+				return nil, location, nodes
+			end
+		end
+
+		return location
+	end
+
+	-- Performs string parsing and navigates to the parent node of a given path
+	function vfs:navigate_leafed(path, auto_dir)
+		local leafless, leaf = path:match("^(.-)%.([^%.]+)$")
+
+		if (leafless) then
+			local parent = self:navigate(leafless, auto_dir)
+
+			-- Couldn't get there! Ouch!
+			if (not parent) then
+				return nil, ("Could not navigate to parent node '%s': invalid path"):format(leafless)
+			end
+
+			if (not parent.directory) then
+				return nil, ("Could not create node in node '%s': not a directory"):format(leafless)
+			end
+
+			return parent, leafless, leaf
+		else
+			leafless = ""
+			leaf = path
+
+			return self, leafless, leaf
+		end
+	end
+
+	function vfs:get_file(path)
+		if (not self.enabled) then
+			return false
+		end
+
+		local object = self:navigate(path)
+
+		if (object) then
+			return {
+				_contents = object.contents,
+				read = file_read,
+				close = file_close,
+				path = path
+			}
+		end
+	end
+
+	function vfs:is_file(path)
+		if (not self.enabled) then
+			return false
+		end
+
+		local object = self:navigate(path)
+
+		return (object and object.file)
+	end
+
+	function vfs:add_file(path, contents)
+		self.enabled = true
+		local parent, leafless, leaf = self:navigate_leafed(path, true)
+
+		-- leafless contains error state if parent is nil
+		if (not parent) then
+			return nil, leafless
+		end
+
+		local node = {
+			file = true,
+			contents = contents
+		}
+
+		parent.nodes[leaf] = node
+
+		return node
+	end
+
+	function vfs:get_directory(path)
+		if (not self.enabled) then
+			return false
+		end
+
+		local object = self:navigate(path)
+
+		if (object) then
+			return {
+				_nodes = object.nodes,
+				list = directory_read,
+				close = directory_close,
+				path = path
+			}
+		end
+	end
+
+	function vfs:is_directory(path)
+		if (not self.enabled) then
+			return false
+		end
+
+		local object = self:navigate(path)
+
+		return (object and object.directory)
+	end
+
+	function vfs:add_directory(path)
+		self.enabled = true
+		local parent, leafless, leaf = self:navigate_leafed(path)
+
+		-- leafless contains error state if parent is nil
+		if (not parent) then
+			return nil, leafless
+		end
+
+		local node = {
+			directory = true,
+			nodes = {}
+		}
+
+		parent.nodes[leaf] = node
+
+		return node
+	end
+end
+
 local function load_file(file)
 	local method = assert(load_with_env(file:read()))
-	local result = method(file.path, N)
+	local result = method(file.path, N.base)
 
 	return result
 end
@@ -763,4 +814,10 @@ function N:get(path)
 	end
 end
 
-return N
+if (N.config.lib) then
+	N.base = N:get()
+else
+	N.base = N
+end
+
+return N.base
