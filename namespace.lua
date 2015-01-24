@@ -1,5 +1,5 @@
 --[[
-	Lua Namespace 0.3.0
+	Lua Namespace 0.3.1
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
 
@@ -22,7 +22,7 @@
 ]]
 
 -- Current namespace version
-local n_version = {0, 3, 0, "alpha"}
+local n_version = {0, 3, 1, "alpha"}
 local n_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(n_version))
 
 -- Determine Lua capabilities and library support
@@ -49,7 +49,6 @@ end
 
 -- Contains our actual core
 local N = {
-	initializing = {},
 	_loaded = {},
 	simple = {}, -- Fallback and default methods
 	-- Filesystem methods
@@ -170,9 +169,9 @@ local unpack = unpack or table.unpack
 local load_with_env
 
 if (support.lua51) then
-	function load_with_env(source, environment)
+	function load_with_env(source, from, environment)
 		environment = environment or getfenv()
-		local chunk, err = loadstring(source)
+		local chunk, err = loadstring(source, from)
 
 		if (not chunk) then
 			return chunk, err
@@ -183,7 +182,9 @@ if (support.lua51) then
 		return chunk
 	end
 elseif (support.lua52) then
-	load_with_env = load
+	load_with_env = function(source, from, environment)
+		return load(source, from, nil, environment)
+	end
 end
 
 -- Find out a path for the directory above namespace
@@ -758,7 +759,7 @@ do
 end
 
 local function load_file(file)
-	local method = assert(load_with_env(file:read()))
+	local method = assert(load_with_env(file:read(), file.path))
 	local result = method(file.path, N.base)
 
 	return result
@@ -766,14 +767,22 @@ end
 
 local function load_directory(directory)
 	local object = N:get(module_join(directory.path, "_")) or {}
+	local initializing = {}
 
 	setmetatable(object, {
 		__index = function(self, key)
-			self[key] = N.initializing
-
 			local path = module_join(directory.path, key)
+
+			if (initializing[key]) then
+				error(("Circular reference loading %q!"):format(path), 2)
+			end
+
+			initializing[key] = true
+
 			local result = N:get(path)
 			self[key] = result
+
+			initializing[key] = false
 
 			return result
 		end
