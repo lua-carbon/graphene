@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.3.1
+- Circular reference detection
+
 ## 0.3.0
 - Directory loads now load `_.lua` in the directory if it exists.
 
