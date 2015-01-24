@@ -1,5 +1,5 @@
 --[[
-	Lua Namespace 0.2.1
+	Lua Namespace 0.3.0
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
 
@@ -22,19 +22,8 @@
 ]]
 
 -- Current namespace version
-local n_version = {0, 2, 1, "alpha"}
+local n_version = {0, 3, 0, "alpha"}
 local n_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(n_version))
-
--- Hopeful dependencies
-local ok, lfs = pcall(require, "lfs")
-if (not ok) then
-	lfs = nil
-end
-
-local ok, hate = pcall(require, "hate")
-if (not ok) then
-	hate = nil
-end
 
 -- Determine Lua capabilities and library support
 local support = {}
@@ -56,6 +45,36 @@ function support:report()
 	end
 
 	return table.concat(features, ", ")
+end
+
+-- Contains our actual core
+local N = {
+	initializing = {},
+	_loaded = {},
+	simple = {}, -- Fallback and default methods
+	-- Filesystem methods
+	fs = {
+		providers = {}
+	},
+	support = support, -- Table for fast support lookups
+
+	version = n_version, -- Version table for programmatic comparisons
+	versionstring = n_versionstring, -- Version string for user-facing reporting
+
+	config = {
+		lib = true
+	}
+}
+
+-- Hopeful dependencies
+local ok, lfs = pcall(require, "lfs")
+if (not ok) then
+	lfs = nil
+end
+
+local ok, hate = pcall(require, "hate")
+if (not ok) then
+	hate = nil
 end
 
 -- What Lua are we running under?
@@ -180,24 +199,6 @@ else
 	n_root = (...):match("(.+)%..-$")
 end
 
--- Contains our actual core
-local N = {
-	_loaded = {},
-	simple = {}, -- Fallback and default methods
-	-- Filesystem methods
-	fs = {
-		providers = {}
-	},
-	support = support, -- Table for fast support lookups
-
-	version = n_version, -- Version table for programmatic comparisons
-	versionstring = n_versionstring, -- Version string for user-facing reporting
-
-	config = {
-		lib = true
-	}
-}
-
 -- Utility Methods
 
 
@@ -237,7 +238,7 @@ end
 	Joins two module names with a period and removes any extraneous periods.
 ]]
 local function module_join(first, second)
-	return ((first .. "." .. second):gsub("%.%.+", "."))
+	return ((first .. "." .. second):gsub("%.%.+", "."):gsub("^%.+", ""):gsub("%.+$", ""))
 end
 
 --[[
@@ -764,10 +765,12 @@ local function load_file(file)
 end
 
 local function load_directory(directory)
-	local object = {}
+	local object = N:get(module_join(directory.path, "_")) or {}
 
 	setmetatable(object, {
 		__index = function(self, key)
+			self[key] = N.initializing
+
 			local path = module_join(directory.path, key)
 			local result = N:get(path)
 			self[key] = result

@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.3.0
+- Directory loads now load `_.lua` in the directory if it exists.
+
 ## 0.2.1
 - Namespaces in `.` now function properly.
 
