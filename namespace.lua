@@ -22,7 +22,7 @@
 ]]
 
 -- Current namespace version
-local n_version = {0, 4, 0, "alpha"}
+local n_version = {0, 4, 0, "beta"}
 local n_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(n_version))
 
 -- Determine Lua capabilities and library support
@@ -49,7 +49,8 @@ end
 
 -- Contains our actual core
 local N = {
-	_loaded = {},
+	_loaded = {}, -- Dictionary of loaded modules for caching
+	_rebasing = {}, -- Contains rebasing information
 	Support = support, -- Table for fast support lookups
 
 	Version = n_version, -- Version table for programmatic comparisons
@@ -66,12 +67,13 @@ local N = {
 	}
 }
 
--- Hopeful dependencies
+-- Do we have LFS?
 local ok, lfs = pcall(require, "lfs")
 if (not ok) then
 	lfs = nil
 end
 
+-- Do we have HATE?
 local ok, hate = pcall(require, "hate")
 if (not ok) then
 	hate = nil
@@ -90,6 +92,7 @@ else
 end
 
 -- LuaJIT 2.0+
+-- Also check for OS in this path.
 if (jit) then
 	support.jit = true
 
@@ -202,6 +205,7 @@ elseif (support.lua52) then
 	end
 end
 
+-- Provider is_directory and is_file fallbacks for systems without LFS.
 local is_directory
 local is_file
 
@@ -215,7 +219,6 @@ if (support.lfs) then
 	end
 else
 	-- Reduced file functionality without LFS
-	-- This hopefully works
 	function is_file(path)
 		local handle = io.open(path, "r")
 
@@ -253,7 +256,6 @@ else
 end
 
 -- Utility Methods
-
 
 --[[
 	module_to_file(string source, bool is_directory=false)
@@ -383,10 +385,16 @@ end
 --[[
 	Filesystem provider schema:
 
-	Provider.name
-		A friendly name to describe the provider
+	Provider.ID
+		An ID to look up the provider with.
 
-	bool Provider:is_file(string path)
+	Provider.Name
+		A friendly name to describe the provider.
+
+	Provider.Path (LOVE and vanilla IO only)
+		Similar to a system PATH, where the provider looks for files.
+
+	bool Provider:IsFile(string path)
 			path: The module path to check.
 
 	Returns whether the specified path exists on this filesystem provider.
@@ -394,35 +402,35 @@ end
 	File Provider:GetFile(string path)
 		path: The module path to check.
 
-	Returns a file object corresponding to the given file on this filesystem.
+		Returns a file object corresponding to the given file on this filesystem.
 
-	bool Provider:is_directory(string path)
+	bool Provider:IsDirectory(string path)
 		path: The module path to check.
 
-	Returns whether the specified path exists on this filesystem provider.
+		Returns whether the specified path exists on this filesystem provider.
 
 	Directory Provider:GetDirectory(string path)
 		path: The module path to check.
 
-	Returns a directory object corresponding to the given directory on this filesystem.
+		Returns a directory object corresponding to the given directory on this filesystem.
 
-	string File:read()
+	string File:Read()
 		contents: The complete contents of the file.
 
-	Reads the entire file into a string and returns it.
+		Reads the entire file into a string and returns it.
 
-	void File:close()
+	void File:Close()
 	
-	Closes the file, allowing it to be reused by the system.
+		Closes the file, allowing it to be reused by the system.
 
-	string[] Directory:list()
+	string[] Directory:List()
 		files: The files and folders contained in this directory.
 
-	Returns a list of files contained in the directory.
+		Returns a list of files contained in the directory.
 
-	void Directory:close()
+	void Directory:Close()
 	
-	Closes the directory, allowing it to be reused by the system.
+		Closes the directory, allowing it to be reused by the system.
 ]]
 
 -- LOVE filesystem provider
@@ -528,7 +536,7 @@ if (support.love) then
 end
 
 -- Only support the full filesystem if we have IO
--- Could be handicapped without LFS
+-- No FullyLoad method without LFS
 -- FS provider to read from the actual filesystem
 if (support.io) then
 	local full_fs = {
@@ -848,37 +856,59 @@ do
 end
 
 local directory_interface = {}
-do
-	local function nop()
-	end
 
-	function directory_interface:GetNamespaceCore()
-		return N
-	end
+--[[
+	N Directory:GetNamespaceCore()
 
-	function directory_interface:FullyLoad()
-		local list = self._directory:List()
+	Returns the namespace core, defined as N in this file.
+	Not affected by any basing, rebasing, or such.
+]]
+function directory_interface:GetNamespaceCore()
+	return N
+end
 
-		for i, member in ipairs(list) do
-			local object = self[member]
+--[[
+	void Directory:FullyLoad()
 
-			-- Make sure we have an object that isn't this one (necessary because of _.lua).
-			-- Also make sure that it's got a FullyLoad method, which makes it either a directory
-			-- or something trying to emulate a directory, probably.
-			if (object and object ~= self and type(object) == "table" and object.FullyLoad) then
-				object:FullyLoad()
-			end
+	Recursively loads all members of the directory.
+]]
+function directory_interface:FullyLoad()
+	local list = self._directory:List()
+
+	for i, member in ipairs(list) do
+		local object = self[member]
+
+		-- Make sure we have an object that isn't this one (necessary because of _.lua).
+		-- Also make sure that it's got a FullyLoad method, which makes it either a directory
+		-- or something trying to emulate a directory, probably.
+		if (object and object ~= self and type(object) == "table" and object.FullyLoad) then
+			object:FullyLoad()
 		end
 	end
 end
 
-local function load_file(file)
+--[[
+	any? load_file(string path, any? base)
+		path: The module path of the file.
+		base: The root to pass to the module, defaults to N.Base.
+
+	Loads a file and executes it, returning the result.
+	Uses the built-in filesystem abstractions.
+]]
+local function load_file(file, base)
 	local method = assert(load_with_env(file:Read(), file.Path))
-	local result = method(N.Base, file.Path)
+	local result = method(base or N.Base, file.Path)
 
 	return result
 end
 
+--[[
+	Directory? load_directory(string path)
+		path: The module path of the file.
+
+	Loads a directory and its init file, returning the result.
+	Uses the built-in filesystem abstractions.
+]]
 local function load_directory(directory)
 	local object = N:Get(module_join(directory.Path, "_"))
 	local initializing = {}
@@ -909,18 +939,68 @@ local function load_directory(directory)
 	return object
 end
 
--- Namespace API
+--===============--
+-- NAMESPACE API --
+--===============--
+
+-- This library can be accessed by any codefile by using
+-- Directory:GetNamespaceCore()
+-- on any Namespace directory.
+
+--[[
+	void N:AddRebase(string pattern, any target)
+		pattern: The pattern a path should match to use this rule.
+		target: The object to be used as the root namespace upon success.
+
+	Adds a rebasing rule for modules that match this rule.
+	Used primarily for embedding existing namespace modules.
+
+	Can still have issues if the called module interacts with the namespace core.
+]]
+function N:AddRebase(pattern, target)
+	assert(type(pattern) == "string", "Bad argument #1 to N:AddRebase, must be a string!")
+
+	table.insert(self._rebasing, {pattern, target})
+end
+
+--[[
+	void N:ClearRebases()
+
+	Removes all rebasing rules from the core.
+]]
+function N:ClearRebases()
+	for key, value in pairs(self._rebasing) do
+		self._rebasing[key] = nil
+	end
+end
+
+--[[
+	any? N:Get(string path)
+		path: The path to the module, period delimitted
+
+	Returns the object relative to this namespace's root, if it exists.
+]]
 function N:Get(path)
 	path = path or ""
 
+	-- Check for already loaded module!
 	if (self._loaded[path]) then
 		return self._loaded[path]
 	end
 
+	-- Run path through our rebasing rules
+	local base = N.Base
+	for i, rebase in ipairs(self._rebasing) do
+		if (path:match(rebase[1])) then
+			base = rebase[2] or base
+		end
+	end
+
+	-- Is this a file?
 	local file = N.FS:GetFile(path)
 
 	if (file) then
-		local object = load_file(file)
+		local object = load_file(file, base)
 		file:Close()
 
 		if (object) then
@@ -928,6 +1008,7 @@ function N:Get(path)
 			return object
 		end
 	else
+		-- How about a directory?
 		local directory = N.FS:GetDirectory(path)
 
 		if (directory) then
@@ -944,6 +1025,7 @@ function N:Get(path)
 	end
 end
 
+-- If the Lib switch is set, make our base the core instead of the namespace itself.
 if (N.Config.Lib) then
 	N.Base = N:Get()
 else
