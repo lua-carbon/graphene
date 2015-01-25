@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.0.0
+- Renamed library to Graphene.
+- `GetNamespaceCore` renamed to `GetGrapheneCore`.
+- Recommended variable to reference the graphene core is now G.
+- Functionally identical to Namespace 0.4.0-beta
+
 ## 0.4.0
 - Case changed to PascalCase for public API.
 - Added VFS unit test, since it's a little fragile.

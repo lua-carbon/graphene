@@ -1,5 +1,5 @@
 --[[
-	Lua Namespace 0.4.0
+	Graphene 1.0.0-alpha
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
 
@@ -21,9 +21,9 @@
 	3. This notice may not be removed or altered from any source distribution.
 ]]
 
--- Current namespace version
-local n_version = {0, 4, 0, "beta"}
-local n_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(n_version))
+-- Current graphene version
+local g_version = {1, 0, 0, "alpha"}
+local g_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(g_version))
 
 -- Determine Lua capabilities and library support
 local support = {}
@@ -48,13 +48,13 @@ function support:Report()
 end
 
 -- Contains our actual core
-local N = {
+local G = {
 	_loaded = {}, -- Dictionary of loaded modules for caching
 	_rebasing = {}, -- Contains rebasing information
 	Support = support, -- Table for fast support lookups
 
-	Version = n_version, -- Version table for programmatic comparisons
-	VersionString = n_versionstring, -- Version string for user-facing reporting
+	Version = g_version, -- Version table for programmatic comparisons
+	VersionString = g_versionstring, -- Version string for user-facing reporting
 
 	-- Filesystem abstraction
 	FS = {
@@ -242,17 +242,17 @@ else
 	end
 end
 
--- Find out a path for the directory above namespace
-local n_root
-local n_file = support.debug and debug.getinfo(1, "S").source:match("@(.+)$")
+-- Find out a path for the directory above graphene
+local g_root
+local g_file = support.debug and debug.getinfo(1, "S").source:match("@(.+)$")
 
-if (n_file) then
+if (g_file) then
 	-- Normalize slashes; this is okay for Windows
-	n_root = n_file:gsub("\\", "/"):match("^(.+)/.-$") or "./"
+	g_root = g_file:gsub("\\", "/"):match("^(.+)/.-$") or "./"
 else
-	print("Could not locate lua-namespace source file; is debug info stripped?")
+	print("Could not locate lua-graphene source file; is debug info stripped?")
 	print("This code path is untested.")
-	n_root = (...):match("(.+)%..-$")
+	g_root = (...):match("(.+)%..-$")
 end
 
 -- Utility Methods
@@ -332,7 +332,7 @@ end
 
 	Returns the file from whatever filesystem provider it's located on.
 ]]
-function N.FS:GetFile(path)
+function G.FS:GetFile(path)
 	for i, provider in ipairs(self.Providers) do
 		if (provider.GetFile) then
 			local file = provider:GetFile(path)
@@ -352,7 +352,7 @@ end
 
 	Returns the directory from whatever filesystem provider it's located on.
 ]]
-function N.FS:GetDirectory(path)
+function G.FS:GetDirectory(path)
 	for i, provider in ipairs(self.Providers) do
 		if (provider.GetDirectory) then
 			local directory = provider:GetDirectory(path)
@@ -372,7 +372,7 @@ end
 
 	Returns the provider with the given ID if it exists.
 ]]
-function N.FS:GetProvider(id)
+function G.FS:GetProvider(id)
 	for i, provider in ipairs(self.Providers) do
 		if (provider.ID == id) then
 			return provider
@@ -438,10 +438,10 @@ if (support.love) then
 	local love_fs = {
 		ID = "love",
 		Name = "LOVE Filesystem",
-		Path = {"", n_root}
+		Path = {"", g_root}
 	}
 
-	table.insert(N.FS.providers, love_fs)
+	table.insert(G.FS.providers, love_fs)
 
 	local file_buffer = {}
 	local directory_buffer = {}
@@ -542,10 +542,10 @@ if (support.io) then
 	local full_fs = {
 		ID = "io",
 		Name = "Full Filesystem",
-		Path = {"", n_root}
+		Path = {"", g_root}
 	}
 
-	table.insert(N.FS.Providers, full_fs)
+	table.insert(G.FS.Providers, full_fs)
 
 	local file_buffer = {}
 	local directory_buffer = {}
@@ -670,7 +670,7 @@ end
 if (support.roblox) then
 end
 
--- Virtual Filesystem for namespace
+-- Virtual Filesystem for Graphene
 -- Used when packing for platforms that don't have real filesystem access
 do
 	local vfs = {
@@ -682,7 +682,7 @@ do
 		Directory = true
 	}
 
-	table.insert(N.FS.Providers, vfs)
+	table.insert(G.FS.Providers, vfs)
 
 	-- File:Read() method
 	local function file_read(self)
@@ -858,13 +858,13 @@ end
 local directory_interface = {}
 
 --[[
-	N Directory:GetNamespaceCore()
+	G Directory:GetGrapheneCore()
 
-	Returns the namespace core, defined as N in this file.
-	Not affected by any basing, rebasing, or such.
+	Returns the Graphene core, defined as G in this file.
+	Not affected by any rebasing rules.
 ]]
-function directory_interface:GetNamespaceCore()
-	return N
+function directory_interface:GetGrapheneCore()
+	return G
 end
 
 --[[
@@ -890,14 +890,14 @@ end
 --[[
 	any? load_file(string path, any? base)
 		path: The module path of the file.
-		base: The root to pass to the module, defaults to N.Base.
+		base: The root to pass to the module, defaults to G.Base.
 
 	Loads a file and executes it, returning the result.
 	Uses the built-in filesystem abstractions.
 ]]
 local function load_file(file, base)
 	local method = assert(load_with_env(file:Read(), file.Path))
-	local result = method(base or N.Base, file.Path)
+	local result = method(base or G.Base, file.Path)
 
 	return result
 end
@@ -910,7 +910,7 @@ end
 	Uses the built-in filesystem abstractions.
 ]]
 local function load_directory(directory)
-	local object = N:Get(module_join(directory.Path, "_"))
+	local object = G:Get(module_join(directory.Path, "_"))
 	local initializing = {}
 
 	object = dictionary_shallow_copy(directory_interface, object)
@@ -927,7 +927,7 @@ local function load_directory(directory)
 
 			initializing[key] = true
 
-			local result = N:Get(path)
+			local result = G:Get(path)
 			self[key] = result
 
 			initializing[key] = false
@@ -940,47 +940,47 @@ local function load_directory(directory)
 end
 
 --===============--
--- NAMESPACE API --
+-- GRAPHENE API --
 --===============--
 
 -- This library can be accessed by any codefile by using
--- Directory:GetNamespaceCore()
--- on any Namespace directory.
+-- Directory:GetGrapheneCore()
+-- on any Graphene directory.
 
 --[[
-	void N:AddRebase(string pattern, any target)
+	void G:AddRebase(string pattern, any target)
 		pattern: The pattern a path should match to use this rule.
 		target: The object to be used as the root namespace upon success.
 
 	Adds a rebasing rule for modules that match this rule.
-	Used primarily for embedding existing namespace modules.
+	Used primarily for embedding existing Graphene modules.
 
-	Can still have issues if the called module interacts with the namespace core.
+	Can still have issues if the called module interacts with the Graphene core.
 ]]
-function N:AddRebase(pattern, target)
-	assert(type(pattern) == "string", "Bad argument #1 to N:AddRebase, must be a string!")
+function G:AddRebase(pattern, target)
+	assert(type(pattern) == "string", "Bad argument #1 to G:AddRebase, must be a string!")
 
 	table.insert(self._rebasing, {pattern, target})
 end
 
 --[[
-	void N:ClearRebases()
+	void G:ClearRebases()
 
 	Removes all rebasing rules from the core.
 ]]
-function N:ClearRebases()
+function G:ClearRebases()
 	for key, value in pairs(self._rebasing) do
 		self._rebasing[key] = nil
 	end
 end
 
 --[[
-	any? N:Get(string path)
+	any? G:Get(string path)
 		path: The path to the module, period delimitted
 
 	Returns the object relative to this namespace's root, if it exists.
 ]]
-function N:Get(path)
+function G:Get(path)
 	path = path or ""
 
 	-- Check for already loaded module!
@@ -989,7 +989,7 @@ function N:Get(path)
 	end
 
 	-- Run path through our rebasing rules
-	local base = N.Base
+	local base = G.Base
 	for i, rebase in ipairs(self._rebasing) do
 		if (path:match(rebase[1])) then
 			base = rebase[2] or base
@@ -997,7 +997,7 @@ function N:Get(path)
 	end
 
 	-- Is this a file?
-	local file = N.FS:GetFile(path)
+	local file = G.FS:GetFile(path)
 
 	if (file) then
 		local object = load_file(file, base)
@@ -1009,7 +1009,7 @@ function N:Get(path)
 		end
 	else
 		-- How about a directory?
-		local directory = N.FS:GetDirectory(path)
+		local directory = G.FS:GetDirectory(path)
 
 		if (directory) then
 			local object = load_directory(directory)
@@ -1025,11 +1025,13 @@ function N:Get(path)
 	end
 end
 
--- If the Lib switch is set, make our base the core instead of the namespace itself.
-if (N.Config.Lib) then
-	N.Base = N:Get()
+-- If the Lib switch is set, make our base the current namespace instead of the Graphene core.
+-- This is the default and recommended functionality.
+-- To retrieve the core, use :GetGrapheneCore() on this.
+if (G.Config.Lib) then
+	G.Base = G:Get()
 else
-	N.Base = N
+	G.Base = G
 end
 
-return N.Base
+return G.Base
