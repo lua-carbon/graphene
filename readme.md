@@ -3,4 +3,25 @@ Namespace is a library intended to make creation of large Lua libraries easier b
 
 Namespace obsoletes `lcore` but does not necessarily replace it: Namespace takes place of the lcore core, with new libraries planned to replace what was once core.
 
-To create a library intended for use with Namespace, make the init.lua of the root folder contain the contents of `namespace.lua`. When `N.config.lib` is set to `true`, which is the default, the namespace will be returned by init.
+To create a library intended for use with Namespace, make the init.lua of the root folder contain the contents of `namespace.lua`. When `N.Config.Lib` is set to `true`, which is the default, the namespace will be returned by init. The core can still be retrieved with this setting from any namespace directory using `Directory:GetNamespaceCore()`.
+
+Objects loaded through Namespace will have a source something like this:
+
+```lua
+-- library/one.lua
+local library = (...)
+local two = library.two
+
+local one = {
+	name = "one"
+}
+
+return one
+```
+
+And then an object using the library can have code like this:
+
+```lua
+local library = require("library")
+print(library.one.name) --> one
+```
