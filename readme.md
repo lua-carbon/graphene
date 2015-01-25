@@ -29,7 +29,7 @@ local one = {
 return one
 ```
 
-And then an object using the library can have code like this:
+And then code using the library can look like this:
 
 ```lua
 local library = require("library")
