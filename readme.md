@@ -3,7 +3,7 @@ Graphene is a library intended to make creation of large Lua libraries easier by
 
 Graphene obsoletes `lcore` but does not necessarily replace it: Graphene takes place of the lcore core, with new libraries planned to replace what was once core.
 
-To create a library intended for use with Graphene, make the init.lua of the root folder contain the contents of `namespace.lua`. When `N.Config.Lib` is set to `true`, which is the default, the namespace will be returned by init. The core can still be retrieved with this setting from any namespace directory using `Directory:GetGrapheneCore()`.
+To create a library intended for use with Graphene, make the init.lua of the root folder contain the contents of `graphene.lua`. Then, when the folder containing your library is required, a Graphene namespace will be returned that facilitates loading the rest of your library. What used to be `init.lua` in a library should then become `_.lua`, which is automatically loaded by Graphene to initialize directories.
 
 ## Support
 Graphene presently runs under the following platforms natively:
