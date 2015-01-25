@@ -6,6 +6,7 @@
 - Vanilla Lua now has a non-LFS fallback
 - LOVE FS wrapper is now the highest priority
 - Parameters passed to loaded modules are now `(base, path)` instead of `(path, base)`
+- Directories now have a `FullyLoad` member function to load all members of the namespace recursively.
 
 ## 0.3.1
 - Circular reference detection

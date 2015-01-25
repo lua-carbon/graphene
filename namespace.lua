@@ -278,13 +278,13 @@ end
 	Also returns whether the file is most likely a directory object or not.
 ]]
 local function file_to_module(source)
-	locaN.fsource = source:gsub("%..-$", "")
+	local fsource = source:gsub("%..-$", "")
 	local is_file = (fsource ~= source)
 	return (fsource:gsub("[/\\]+", "."):gsub("^%.*", ""):gsub("%.*$", "")), is_file
 end
 
 --[[
-	(string result) module_join(string first, string second)
+	string module_join(string first, string second)
 		first: The first part of the path.
 		second: The second part of the path.
 
@@ -295,7 +295,7 @@ local function module_join(first, second)
 end
 
 --[[
-	(string result) path_join(string first, string second)
+	string path_join(string first, string second)
 		first: The first part of the path.
 		second: The second part of the path.
 
@@ -305,6 +305,13 @@ local function path_join(first, second)
 	return ((first .. "/" .. second):gsub("//+", "/"):gsub("/+$", ""))
 end
 
+--[[
+	table dictionary_shallow_copy(table from, table to)
+		from: The table to source data from.
+		to: The table to copy data into.
+
+	Performs a shallow copy from one table to another.
+]]
 local function dictionary_shallow_copy(from, to)
 	to = to or {}
 
@@ -569,7 +576,7 @@ if (support.io) then
 
 		for name in lfs.dir(self.FilePath) do
 			if (name ~= "." and name ~= "..") then
-				table.insert(paths, module_join(self.Path, path_to_module(name)))
+				table.insert(paths, (file_to_module(name)))
 			end
 		end
 
@@ -681,7 +688,13 @@ do
 
 	-- Directory:List() method
 	local function directory_list(self)
-		return self._nodes
+		local list = {}
+
+		for name in pairs(self._nodes) do
+			table.insert(list, name)
+		end
+
+		return list
 	end
 
 	-- Directory:Close() method
@@ -797,7 +810,7 @@ do
 		if (object and object.Directory) then
 			return {
 				_nodes = object.Nodes,
-				List = directory_read,
+				List = directory_list,
 				Close = directory_close,
 				Path = path
 			}
@@ -835,9 +848,28 @@ do
 end
 
 local directory_interface = {}
+do
+	local function nop()
+	end
 
-function directory_interface:GetNamespaceCore()
-	return N
+	function directory_interface:GetNamespaceCore()
+		return N
+	end
+
+	function directory_interface:FullyLoad()
+		local list = self._directory:List()
+
+		for i, member in ipairs(list) do
+			local object = self[member]
+
+			-- Make sure we have an object that isn't this one (necessary because of _.lua).
+			-- Also make sure that it's got a FullyLoad method, which makes it either a directory
+			-- or something trying to emulate a directory, probably.
+			if (object and object ~= self and type(object) == "table" and object.FullyLoad) then
+				object:FullyLoad()
+			end
+		end
+	end
 end
 
 local function load_file(file)
@@ -852,6 +884,8 @@ local function load_directory(directory)
 	local initializing = {}
 
 	object = dictionary_shallow_copy(directory_interface, object)
+
+	object._directory = object._directory or directory
 
 	setmetatable(object, {
 		__index = function(self, key)
