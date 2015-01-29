@@ -5,8 +5,10 @@
 - `GetNamespaceCore` renamed to `GetGrapheneCore`.
 - Recommended variable to reference the graphene core is now G.
 - Based on Namespace 0.4.0-beta.
+- New `gengraphene.lua` generator for slimming down the Graphene core.
 - Now supports multiple file extensions; see `G.Config.FileExtensions`.
 - Rebasing rules have turned into Submodules, and `G:AddRebase` has been renamed to `G:AddSubmodule`.
+- Added GenGraphine, a command line tool to generate smaller versions of Graphene.
 - Directory init files (`_.lua` by default) can now be renamed, see `G.Config.InitFile`.
 - Directory objects now have a `GrapheneGet` method that can be overloaded.
 - Directory objects now have a `AddGrapheneSubmodule` method to allow infinite submodule nesting.

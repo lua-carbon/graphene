@@ -127,6 +127,7 @@ if (io) then
 	support.io = true
 end
 
+-- {% if (support.love) then %}
 -- Are we running in LOVE?
 if (love) then
 	support.love = {}
@@ -158,6 +159,7 @@ if (love) then
 		end
 	end
 end
+-- {% end %}
 
 -- Cross-version shims
 local unpack = unpack or table.unpack
@@ -186,7 +188,7 @@ if (support.lua51) then
 		return chunk
 	end
 elseif (support.lua52) then
-	load_with_env = function(source, from, environment)
+	function load_with_env(source, from, environment)
 		return load(source, from, nil, environment)
 	end
 end
@@ -461,6 +463,7 @@ end
 		Closes the directory, allowing it to be reused by the system.
 ]]
 
+-- {% if (support.love) then %}
 -- LOVE filesystem provider
 if (support.love) then
 	local love_fs = {
@@ -562,6 +565,9 @@ if (support.love) then
 		return love.filesystem.isDirectory(filepath)
 	end
 end
+-- {% end %}
+
+-- {% if (support.io) then %}
 
 -- Only support the full filesystem if we have IO
 -- No FullyLoad method without LFS
@@ -692,7 +698,9 @@ if (support.io) then
 		return is_directory(filepath)
 	end
 end
+-- {% end %}
 
+-- {% if (support.vfs) then %}
 -- Virtual Filesystem for Graphene
 -- Used when packing for platforms that don't have real filesystem access
 do
@@ -877,6 +885,7 @@ do
 		return node
 	end
 end
+-- {% end %}
 
 local directory_interface = {}
 
