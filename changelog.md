@@ -4,7 +4,16 @@
 - Renamed library to Graphene.
 - `GetNamespaceCore` renamed to `GetGrapheneCore`.
 - Recommended variable to reference the graphene core is now G.
-- Functionally identical to Namespace 0.4.0-beta
+- Based on Namespace 0.4.0-beta.
+- Now supports multiple file extensions; see `G.Config.FileExtensions`.
+- Rebasing rules have turned into Submodules, and `G:AddRebase` has been renamed to `G:AddSubmodule`.
+- Directory init files (`_.lua` by default) can now be renamed, see `G.Config.InitFile`.
+- Directory objects now have a `GrapheneGet` method that can be overloaded.
+- Directory objects now have a `AddGrapheneSubmodule` method to allow infinite submodule nesting.
+- Fixed self-referencing directory init files.
+- Fixed directory objects being marked as closed but leaking anyways.
+- Removed explicit hate support, it can be aliased as `love` for filesystem support.
+- Removed explicit ROBLOX support, this might come back in the future.
 
 ## 0.4.0
 - Case changed to PascalCase for public API.

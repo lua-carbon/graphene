@@ -1,5 +1,5 @@
 --[[
-	Graphene 1.0.0-alpha
+	Graphene 1.0.0-beta
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
 
@@ -22,7 +22,7 @@
 ]]
 
 -- Current graphene version
-local g_version = {1, 0, 0, "alpha"}
+local g_version = {1, 0, 0, "beta"}
 local g_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(g_version))
 
 -- Determine Lua capabilities and library support
@@ -63,7 +63,9 @@ local G = {
 
 	-- Configuration
 	Config = {
-		Lib = true
+		Lib = true,
+		FileExtensions = {".lua"},
+		InitFile = "_"
 	}
 }
 
@@ -71,12 +73,6 @@ local G = {
 local ok, lfs = pcall(require, "lfs")
 if (not ok) then
 	lfs = nil
-end
-
--- Do we have HATE?
-local ok, hate = pcall(require, "hate")
-if (not ok) then
-	hate = nil
 end
 
 -- What Lua are we running under?
@@ -131,11 +127,6 @@ if (io) then
 	support.io = true
 end
 
--- Is hate available?
-if (hate) then
-	support.hate = true
-end
-
 -- Are we running in LOVE?
 if (love) then
 	support.love = {}
@@ -166,11 +157,6 @@ if (love) then
 			support.love = false
 		end
 	end
-end
-
--- How about ROBLOX?
-if (game and workspace and Instance) then
-	support.roblox = true
 end
 
 -- Cross-version shims
@@ -308,7 +294,30 @@ local function path_join(first, second)
 end
 
 --[[
-	table dictionary_shallow_copy(table from, table to)
+	string[] file_paths(string name, [bool is_directory, string[] paths])
+		name: The path to transform
+		is_directory: Whether or not this points to a directory
+		paths: The 
+
+	Create a list of all acceptable file paths for a module path on a real filesystem.
+]]
+local function file_paths(name, is_directory, paths)
+	local extensions = is_directory and {""} or G.Config.FileExtensions
+	local paths = paths or {""}
+	local filename = module_to_file(name)
+	local result = {}
+
+	for i, path in ipairs(paths) do
+		for j, extension in ipairs(extensions) do
+			table.insert(result, path_join(path, name) .. extension)
+		end
+	end
+
+	return result
+end
+
+--[[
+	table dictionary_shallow_copy(table from, [table to])
 		from: The table to source data from.
 		to: The table to copy data into.
 
@@ -319,6 +328,25 @@ local function dictionary_shallow_copy(from, to)
 
 	for key, value in pairs(from) do
 		to[key] = value
+	end
+
+	return to
+end
+
+--[[
+	table dictionary_shallow_merge(table from, table to)
+		from: The table to source data from.
+		to: The table to copy data into.
+
+	Performs a shallow copy from one table to another without overwriting keys.
+]]
+local function dictionary_shallow_merge(from, to)
+	to = to or {}
+
+	for key, value in pairs(from) do
+		if (to[key] == nil) then
+			to[key] = value
+		end
 	end
 
 	return to
@@ -665,11 +693,6 @@ if (support.io) then
 	end
 end
 
--- ROBLOX "filesystem" provider
--- TODO
-if (support.roblox) then
-end
-
 -- Virtual Filesystem for Graphene
 -- Used when packing for platforms that don't have real filesystem access
 do
@@ -868,6 +891,16 @@ function directory_interface:GetGrapheneCore()
 end
 
 --[[
+	void Directory:AddGrapheneSubmodule(string path)
+		path: The path to the submodule relative to this directory.
+
+	Adds a submodule relative to this directory.
+]]
+function directory_interface:AddGrapheneSubmodule(path)
+	return G:AddSubmodule(module_join(self._directory.Path, path))
+end
+
+--[[
 	void Directory:FullyLoad()
 
 	Recursively loads all members of the directory.
@@ -910,30 +943,29 @@ end
 	Uses the built-in filesystem abstractions.
 ]]
 local function load_directory(directory)
-	local object = G:Get(module_join(directory.Path, "_"))
 	local initializing = {}
 
-	object = dictionary_shallow_copy(directory_interface, object)
+	local object = dictionary_shallow_copy(directory_interface)
+	object._directory = directory
 
-	object._directory = object._directory or directory
+	object.GrapheneGet = function(self, key)
+		local path = module_join(self._directory.Path, key)
+
+		if (initializing[key]) then
+			error(("Circular reference loading %q!"):format(path), 2)
+		end
+
+		initializing[key] = true
+
+		local result = G:Get(path, self, key)
+
+		initializing[key] = false
+
+		return result
+	end
 
 	setmetatable(object, {
-		__index = function(self, key)
-			local path = module_join(directory.Path, key)
-
-			if (initializing[key]) then
-				error(("Circular reference loading %q!"):format(path), 2)
-			end
-
-			initializing[key] = true
-
-			local result = G:Get(path)
-			self[key] = result
-
-			initializing[key] = false
-
-			return result
-		end
+		__index = object.GrapheneGet
 	})
 
 	return object
@@ -948,19 +980,18 @@ end
 -- on any Graphene directory.
 
 --[[
-	void G:AddRebase(string pattern, any target)
-		pattern: The pattern a path should match to use this rule.
-		target: The object to be used as the root namespace upon success.
+	void G:AddRebase(string path)
+		path: The path to have as a submodule
 
 	Adds a rebasing rule for modules that match this rule.
-	Used primarily for embedding existing Graphene modules.
+	Used for embedding existing Graphene modules.
 
-	Can still have issues if the called module interacts with the Graphene core.
+	Components should use directory:AddGrapheneSubmodule instead unless wrapping Graphene itself.
 ]]
-function G:AddRebase(pattern, target)
-	assert(type(pattern) == "string", "Bad argument #1 to G:AddRebase, must be a string!")
+function G:AddSubmodule(path)
+	assert(type(path) == "string", "Bad argument #1 to G:AddRebase, must be a string!")
 
-	table.insert(self._rebasing, {pattern, target})
+	table.insert(self._rebasing, {"^" .. path:gsub("%.", "%%."), path})
 end
 
 --[[
@@ -975,16 +1006,25 @@ function G:ClearRebases()
 end
 
 --[[
-	any? G:Get(string path)
+	any? G:Get(string path, [table target, any key])
 		path: The path to the module, period delimitted
+		target: A container to load the result into.
+		key: The index of the container to place the result at.
 
 	Returns the object relative to this namespace's root, if it exists.
 ]]
-function G:Get(path)
+function G:Get(path, target, key)
 	path = path or ""
+
+	-- Flag to determine whether to use target and key as out.
+	local do_placement = not not (target and key)
 
 	-- Check for already loaded module!
 	if (self._loaded[path]) then
+		if (do_placement) then
+			target[key] = self._loaded[path]
+		end
+
 		return self._loaded[path]
 	end
 
@@ -992,7 +1032,9 @@ function G:Get(path)
 	local base = G.Base
 	for i, rebase in ipairs(self._rebasing) do
 		if (path:match(rebase[1])) then
-			base = rebase[2] or base
+			base = self._loaded[rebase[2]] or G.Base
+
+			break
 		end
 	end
 
@@ -1005,6 +1047,11 @@ function G:Get(path)
 
 		if (object) then
 			self._loaded[path] = object
+
+			if (do_placement) then
+				target[key] = object
+			end
+
 			return object
 		end
 	else
@@ -1013,10 +1060,38 @@ function G:Get(path)
 
 		if (directory) then
 			local object = load_directory(directory)
-			directory:Close()
 
 			if (object) then
 				self._loaded[path] = object
+
+				if (do_placement) then
+					target[key] = object
+				end
+
+				-- Check for init file
+				local init = self:Get(module_join(path, self.Config.InitFile))
+
+				if (init) then
+					-- If init is a table, we should merge against it
+					if (type(init) == "table") then
+						-- Merge in our directory object
+						dictionary_shallow_merge(object, init)
+
+						-- Merge in our directory metatable
+						if (not getmetatable(init)) then
+							setmetatable(init, getmetatable(object))
+						end
+					end
+
+					self._loaded[path] = init
+
+					if (do_placement) then
+						target[key] = init
+					end
+
+					return init
+				end
+
 				return object
 			end
 		else
@@ -1029,7 +1104,7 @@ end
 -- This is the default and recommended functionality.
 -- To retrieve the core, use :GetGrapheneCore() on this.
 if (G.Config.Lib) then
-	G.Base = G:Get()
+	G:Get(nil, G, "Base")
 else
 	G.Base = G
 end

@@ -2,23 +2,34 @@
 	Graphene VFS Test
 ]]
 
+print("Graphene: Starting VFS Test...")
+
 local Graphene = require("graphene")
 local G = Graphene:GetGrapheneCore()
 local vfs = G.FS:GetProvider("vfs")
 
--- Basic write
 vfs:AddDirectory("Test")
 vfs:AddFile("Test._", [[ return {Name = "Test"} ]])
 vfs:AddFile("Test.Hello", [[ (...).HelloFlag = true; return {Name = "Hello"} ]])
 
+-- Test.Embedded is a hypothetical submodule that can run on its own
+-- We load it as a submodule below
 vfs:AddDirectory("Test.Embedded")
 vfs:AddFile("Test.Embedded.X", [[ return {Name = "X"} ]])
 vfs:AddFile("Test.Embedded.Y", [[ return {Name = "Y", Friend = (...).X} ]])
 
-G:AddRebase("^Test%.Embedded%.", Graphene.Test.Embedded)
+-- This library is used to test against a bug that seems to crop up every once and awhile
+-- It has to do with leaking directory objects
+vfs:AddDirectory("Other")
+vfs:AddFile("Other._", [[ return {Name = "Other"} ]])
 
--- FullyLoad capability
+-- Register Test.Embedded as a submodule
 local Test = Graphene.Test
+Test:AddGrapheneSubmodule("Embedded")
+
+local Other = Graphene.Other
+
+-- Test FullyLoad functionality
 Test:FullyLoad()
 
 assert(Graphene.HelloFlag, "FullyLoad failed to load Test.Hello")
@@ -29,6 +40,9 @@ assert(Test.Hello, "Hello was not loaded")
 assert(Test.Hello.Name == "Hello", "Hello did not load properly.")
 
 assert(Test.Embedded.X.Name == "X", "Rebased library did not load properly.")
+assert(Test.Embedded.Y.Friend, "Rebased library was not rebased.")
 assert(Test.Embedded.Y.Friend.Name == "X", "Rebased library was not rebased correctly.")
 
-print("VFS tested successfully.")
+assert(Other.Name == "Other", "Failed to load non-Test root library")
+
+print("Graphene: VFS tested passed.")
