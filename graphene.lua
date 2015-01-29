@@ -1,5 +1,6 @@
 --[[
 	Graphene 1.0.0-beta
+	https://github.com/LPGhatguy/lua-graphene
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
 
@@ -626,6 +627,7 @@ if (support.io) then
 	end
 
 	function full_fs:GetFile(path, filepath)
+		local paths = file_paths(path, false, self.Path)
 		filepath = filepath or module_to_file(path)
 
 		for i, base in ipairs(self.Path) do
@@ -637,7 +639,7 @@ if (support.io) then
 
 				if (file) then
 					file.Path = path
-					file.FilePath = filepath
+					file.FilePath = fullpath
 
 					return file
 				else
@@ -938,6 +940,13 @@ end
 	Uses the built-in filesystem abstractions.
 ]]
 local function load_file(file, base)
+	local body, err = file:Read()
+
+	if (not body) then
+		-- This really should never happen!
+		error(("File at %q could not be loaded: %s"):format(file.Path, err))
+	end
+
 	local method = assert(load_with_env(file:Read(), file.Path))
 	local result = method(base or G.Base, file.Path)
 
