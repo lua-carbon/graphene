@@ -912,6 +912,27 @@ function directory_interface:AddGrapheneSubmodule(path)
 end
 
 --[[
+	void Directory:AddGrapheneAlias(string path, any object)
+		path: The module path to associate with this module.
+		object: The object to load with this alias.
+
+	Aliases an object with a library path. Will overwrite existing entries mercilessly.
+]]
+function directory_interface:AddGrapheneAlias(path, object)
+	G._loaded[module_join(self._directory.Path, path)] = object
+end
+
+--[[
+	Directory Directory:CreateGrapheneSubdirectory(string path)
+		path: The path to associate with the directory
+
+	Creates a directory based on a submodule of the current directory.
+]]
+function directory_interface:CreateGrapheneSubdirectory(path)
+	return G:CreateDirectory(path)
+end
+
+--[[
 	void Directory:FullyLoad()
 
 	Recursively loads all members of the directory.
@@ -1024,6 +1045,52 @@ function G:ClearRebases()
 end
 
 --[[
+	Directory G:CreateDirectory(string path, [FSDirectory directory])
+		path: The path the directory should be based on.
+		directory: A directory object to use. A generic one is created if not given.
+
+	Creates a Directory object with the given path.
+	Not associated with any filesystem.
+]]
+function G:CreateDirectory(path, directory)
+	if (not directory) then
+		directory = {
+			Path = path,
+			List = function(self)
+				error("List is not supported with root-created directory objects!")
+			end
+		}
+	end
+
+	local initializing = {}
+
+	local object = dictionary_shallow_copy(directory_interface)
+	object._directory = directory
+
+	object.GrapheneGet = function(self, key)
+		local path = module_join(self._directory.Path, key)
+
+		if (initializing[key]) then
+			error(("Circular reference loading %q!"):format(path), 2)
+		end
+
+		initializing[key] = true
+
+		local result = G:Get(path, self, key)
+
+		initializing[key] = false
+
+		return result
+	end
+
+	setmetatable(object, {
+		__index = object.GrapheneGet
+	})
+
+	return object
+end
+
+--[[
 	any? G:Get(string path, [table target, any key])
 		path: The path to the module, period delimitted
 		target: A container to load the result into.
@@ -1077,7 +1144,7 @@ function G:Get(path, target, key)
 		local directory = G.FS:GetDirectory(path)
 
 		if (directory) then
-			local object = load_directory(directory)
+			local object = self:CreateDirectory(path, directory)
 
 			if (object) then
 				self._loaded[path] = object
@@ -1119,14 +1186,14 @@ function G:Get(path, target, key)
 end
 
 --[[
-	void G:Alias(string name, any object)
-		name: The module path to associate with this module.
+	void G:Alias(string path, any object)
+		path: The module path to associate with this module.
 		object: The object to load with this alias.
 
 	Aliases an object with a library path. Will overwrite existing entries mercilessly.
 ]]
-function G:Alias(name, object)
-	self._loaded[name] = object
+function G:Alias(path, object)
+	self._loaded[path] = object
 end
 
 -- If the Lib switch is set, make our base the current namespace instead of the Graphene core.

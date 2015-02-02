@@ -9,9 +9,13 @@
 - Now supports multiple file extensions; see `G.Config.FileExtensions`.
 - Rebasing rules have turned into Submodules, and `G:AddRebase` has been renamed to `G:AddSubmodule`.
 - Added GenGraphine, a command line tool to generate smaller versions of Graphene.
+- Added `G:AddAlias` for creating global aliasing rules.
+- Exposed `G:CreateDirectory` to create Graphene directory objects.
 - Directory init files (`_.lua` by default) can now be renamed, see `G.Config.InitFile`.
 - Directory objects now have a `GrapheneGet` method that can be overloaded.
-- Directory objects now have a `AddGrapheneSubmodule` method to allow infinite submodule nesting.
+- Directory objects now have an `AddGrapheneSubmodule` method to allow infinite submodule nesting.
+- Directory objects now have an `AddGrapheneAlias` method to allow nested aliasing.
+- Directory objects now have a `CreateGrapheneSubdirectory` method to allow nested aliasing.
 - Fixed self-referencing directory init files.
 - Fixed directory objects being marked as closed but leaking anyways.
 - Removed explicit hate support, it can be aliased as `love` for filesystem support.
