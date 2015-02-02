@@ -473,7 +473,7 @@ if (support.love) then
 		Path = {"", g_root}
 	}
 
-	table.insert(G.FS.providers, love_fs)
+	table.insert(G.FS.Providers, love_fs)
 
 	local file_buffer = {}
 	local directory_buffer = {}
@@ -483,7 +483,7 @@ if (support.love) then
 	end
 
 	local function file_read(self)
-		return love.filesystem.read(self.filepath)
+		return love.filesystem.read(self.FilePath)
 	end
 
 	local function directory_close(self)
@@ -491,10 +491,10 @@ if (support.love) then
 	end
 
 	local function directory_list(self)
-		local items = love.filesystem.getDirectoryItems(self.filepath)
+		local items = love.filesystem.getDirectoryItems(self.FilePath)
 
 		for i = 1, #items do
-			items[i] = module_join(self.path, file_to_module(items[i]))
+			items[i] = module_join(self.Path, file_to_module(items[i]))
 		end
 
 		return items
