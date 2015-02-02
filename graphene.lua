@@ -1118,6 +1118,17 @@ function G:Get(path, target, key)
 	end
 end
 
+--[[
+	void G:Alias(string name, any object)
+		name: The module path to associate with this module.
+		object: The object to load with this alias.
+
+	Aliases an object with a library path. Will overwrite existing entries mercilessly.
+]]
+function G:Alias(name, object)
+	self._loaded[name] = object
+end
+
 -- If the Lib switch is set, make our base the current namespace instead of the Graphene core.
 -- This is the default and recommended functionality.
 -- To retrieve the core, use :GetGrapheneCore() on this.
