@@ -7,6 +7,7 @@
 - Based on Namespace 0.4.0-beta.
 - New `gengraphene.lua` generator for slimming down the Graphene core.
 - Now supports multiple file extensions; see `G.Config.FileExtensions`.
+- API methods are now type checked to some degree.
 - Rebasing rules have turned into Submodules, and `G:AddRebase` has been renamed to `G:AddSubmodule`.
 - Added GenGraphine, a command line tool to generate smaller versions of Graphene.
 - Added `G:AddAlias` for creating global aliasing rules.
