@@ -889,6 +889,13 @@ do
 end
 -- {% end %}
 
+-- Objects we can index
+-- Used in utilities below
+local indexable = {
+	table = true,
+	userdata = true
+}
+
 local directory_interface = {}
 
 --[[
@@ -908,6 +915,10 @@ end
 	Adds a submodule relative to this directory.
 ]]
 function directory_interface:AddGrapheneSubmodule(path)
+	if (type(path) ~= "string") then
+		error("Bad argument #1: submodule path must be a string!", 2)
+	end
+
 	return G:AddSubmodule(module_join(self.__directory.Path, path))
 end
 
@@ -919,6 +930,10 @@ end
 	Aliases an object with a library path. Will overwrite existing entries mercilessly.
 ]]
 function directory_interface:AddGrapheneAlias(path, object)
+	if (type(path) ~= "string") then
+		error("Bad argument #1: module alias path must be a string!", 2)
+	end
+
 	G._loaded[module_join(self.__directory.Path, path)] = object
 end
 
@@ -929,7 +944,11 @@ end
 	Creates a directory based on a submodule of the current directory.
 ]]
 function directory_interface:CreateGrapheneSubdirectory(path)
-	return G:CreateDirectory(path)
+	if (type(path) ~= "string") then
+		error("Bad argument #1: subdirectory path must be a string!", 2)
+	end
+
+	return G:CreateDirectory(module_join(self.__directory.Path, path))
 end
 
 --[[
@@ -994,7 +1013,9 @@ end
 	Components should use directory:AddGrapheneSubmodule instead unless wrapping Graphene itself.
 ]]
 function G:AddSubmodule(path)
-	assert(type(path) == "string", "Bad argument #1 to G:AddRebase, must be a string!")
+	if (type(path) ~= "string") then
+		error("Bad argument #1: module path must be a string", 2)
+	end
 
 	table.insert(self._rebasing, {"^" .. path:gsub("%.", "%%."), path})
 end
@@ -1011,6 +1032,21 @@ function G:ClearRebases()
 end
 
 --[[
+	void G:Alias(string path, any object)
+		path: The module path to associate with this module.
+		object: The object to load with this alias.
+
+	Aliases an object with a library path. Will overwrite existing entries mercilessly.
+]]
+function G:Alias(path, object)
+	if (type(path) ~= "string") then
+		error("Bad argument #1: module path must be a string.", 2)
+	end
+
+	self._loaded[path] = object
+end
+
+--[[
 	Directory G:CreateDirectory(string path, [FSDirectory directory])
 		path: The path the directory should be based on.
 		directory: A directory object to use. A generic one is created if not given.
@@ -1019,6 +1055,14 @@ end
 	Not associated with any filesystem.
 ]]
 function G:CreateDirectory(path, directory)
+	if (type(path) ~= "string") then
+		error("Bad argument #1: module path must be a string.", 2)
+	end
+
+	if (directory ~= nil and not indexable[type(directory)]) then
+		error("Bad argument #2: directory must be an indexable object if given.", 2)
+	end
+
 	if (not directory) then
 		directory = {
 			Path = path,
@@ -1062,14 +1106,22 @@ function G:CreateDirectory(path, directory)
 end
 
 --[[
-	any? G:Get(string path, [table target, any key])
-		path: The path to the module, period delimitted
+	any? G:Get([string path, table target, any key])
+		path: The path to the module, period delimitted. If not given, it becomes an empty string.
 		target: A container to load the result into.
 		key: The index of the container to place the result at.
 
 	Returns the object relative to this namespace's root, if it exists.
 ]]
 function G:Get(path, target, key)
+	if (path ~= nil and not (type(path) == "string")) then
+		error("Bad argument #1: module path must be a string if given.", 2)
+	end
+
+	if (target ~= nil and key == nil) then
+		error("Bad argument #3: If argument #2 is given, argument #3 must also be given.", 2)
+	end
+
 	path = path or ""
 
 	-- Flag to determine whether to use target and key as out.
@@ -1149,17 +1201,6 @@ function G:Get(path, target, key)
 			return nil
 		end
 	end
-end
-
---[[
-	void G:Alias(string path, any object)
-		path: The module path to associate with this module.
-		object: The object to load with this alias.
-
-	Aliases an object with a library path. Will overwrite existing entries mercilessly.
-]]
-function G:Alias(path, object)
-	self._loaded[path] = object
 end
 
 -- If the Lib switch is set, make our base the current namespace instead of the Graphene core.
