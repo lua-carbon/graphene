@@ -908,7 +908,7 @@ end
 	Adds a submodule relative to this directory.
 ]]
 function directory_interface:AddGrapheneSubmodule(path)
-	return G:AddSubmodule(module_join(self._directory.Path, path))
+	return G:AddSubmodule(module_join(self.__directory.Path, path))
 end
 
 --[[
@@ -919,7 +919,7 @@ end
 	Aliases an object with a library path. Will overwrite existing entries mercilessly.
 ]]
 function directory_interface:AddGrapheneAlias(path, object)
-	G._loaded[module_join(self._directory.Path, path)] = object
+	G._loaded[module_join(self.__directory.Path, path)] = object
 end
 
 --[[
@@ -938,7 +938,7 @@ end
 	Recursively loads all members of the directory.
 ]]
 function directory_interface:FullyLoad()
-	local list = self._directory:List()
+	local list = self.__directory:List()
 
 	for i, member in ipairs(list) do
 		local object = self[member]
@@ -974,42 +974,6 @@ local function load_file(file, base)
 	local result = method(base or G.Base, file.Path)
 
 	return result
-end
-
---[[
-	Directory? load_directory(string path)
-		path: The module path of the file.
-
-	Loads a directory and its init file, returning the result.
-	Uses the built-in filesystem abstractions.
-]]
-local function load_directory(directory)
-	local initializing = {}
-
-	local object = dictionary_shallow_copy(directory_interface)
-	object._directory = directory
-
-	object.GrapheneGet = function(self, key)
-		local path = module_join(self._directory.Path, key)
-
-		if (initializing[key]) then
-			error(("Circular reference loading %q!"):format(path), 2)
-		end
-
-		initializing[key] = true
-
-		local result = G:Get(path, self, key)
-
-		initializing[key] = false
-
-		return result
-	end
-
-	setmetatable(object, {
-		__index = object.GrapheneGet
-	})
-
-	return object
 end
 
 --===============--
@@ -1064,23 +1028,28 @@ function G:CreateDirectory(path, directory)
 		}
 	end
 
-	local initializing = {}
-
 	local object = dictionary_shallow_copy(directory_interface)
-	object._directory = directory
+	object.__initializing = {}
+	object.__directory = directory
 
-	object.GrapheneGet = function(self, key)
-		local path = module_join(self._directory.Path, key)
+	local __initializing = object.__initializing
 
-		if (initializing[key]) then
+	function object:GrapheneGet(key)
+		if (rawget(object, key)) then
+			return rawget(object, key)
+		end
+
+		if (__initializing[key]) then
 			error(("Circular reference loading %q!"):format(path), 2)
 		end
 
-		initializing[key] = true
+		local path = module_join(directory.Path, key)
+
+		__initializing[key] = true
 
 		local result = G:Get(path, self, key)
 
-		initializing[key] = false
+		__initializing[key] = false
 
 		return result
 	end
@@ -1159,15 +1128,10 @@ function G:Get(path, target, key)
 				local init = self:Get(module_join(path, self.Config.InitFile))
 
 				if (init) then
-					-- If init is a table, we should merge against it
+					-- If init is a table, we should set up metatable fallbacks
 					if (type(init) == "table") then
-						-- Merge in our directory object
-						dictionary_shallow_merge(object, init)
-
-						-- Merge in our directory metatable
-						if (not getmetatable(init)) then
-							setmetatable(init, getmetatable(object))
-						end
+						-- Merge in our metatables from our directory object without overwriting existing entries
+						setmetatable(init, dictionary_shallow_merge(getmetatable(object), getmetatable(init) or {}))
 					end
 
 					self._loaded[path] = init
