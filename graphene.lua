@@ -950,6 +950,8 @@ function directory_interface:FullyLoad()
 			object:FullyLoad()
 		end
 	end
+
+	return self
 end
 
 --[[
