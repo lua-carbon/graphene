@@ -1,5 +1,5 @@
 --[[
-	Graphene 1.0.0-beta
+	Graphene 1.0.0-release
 	https://github.com/LPGhatguy/lua-graphene
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
@@ -23,7 +23,7 @@
 ]]
 
 -- Current graphene version
-local g_version = {1, 0, 0, "beta"}
+local g_version = {1, 0, 0, "release"}
 local g_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(g_version))
 
 -- Determine Lua capabilities and library support
