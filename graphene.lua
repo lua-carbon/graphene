@@ -1,5 +1,5 @@
 --[[
-	Graphene 1.0.0-release
+	Graphene 1.0.1-release
 	https://github.com/LPGhatguy/lua-graphene
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
@@ -23,7 +23,7 @@
 ]]
 
 -- Current graphene version
-local g_version = {1, 0, 0, "release"}
+local g_version = {1, 0, 1, "release"}
 local g_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(g_version))
 
 -- Determine Lua capabilities and library support
@@ -146,16 +146,16 @@ if (love) then
 		local major = love._version_minor
 		local minor = love._version_minor
 
-		-- What *IS* LOVE?
-		if (major ~= 0) then
-			support.love = false
-		end
-
-		if (minor == 9) then
-			-- Definitely 0.9.0
-			support.love.Version = {0, 9, 0, "Baby Inspector"}
+		if (major == 0) then
+			if (minor == 9) then
+				-- Definitely 0.9.0
+				support.love.Version = {0, 9, 0, "Baby Inspector"}
+			else
+				-- 0.8.0 and older; definitely not supported
+				support.love = false
+			end
 		else
-			-- 0.8.0 and older; definitely not supported
+			-- What *IS* LOVE?
 			support.love = false
 		end
 	end

@@ -1,5 +1,8 @@
 # Change Log
 
+## 1.0.1
+- Fixed version check with LOVE 0.9.0
+
 ## 1.0.0
 - Renamed library to Graphene.
 - `GetNamespaceCore` renamed to `GetGrapheneCore`.
