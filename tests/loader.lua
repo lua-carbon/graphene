@@ -52,9 +52,3 @@ assert(Other.Actually, "Test.ActuallyOther was not re-aliased to Other.Actually.
 print(Other.Actually, Test.ActuallyOther)
 
 print("Graphene: VFS tested passed.")
-
-for key, module in ipairs(G:GetLoadedModules()) do
-	print(unpack(module))
-end
-
-print(G:GetMetadata("Other.Actually").Path)
