@@ -733,6 +733,26 @@ do
 
 	table.insert(G.FS.Providers, vfs)
 
+	local function is_file(path)
+		if (not vfs.Enabled) then
+			return false
+		end
+
+		local object = vfs:Navigate(path)
+
+		return (object and object.File)
+	end
+
+	local function is_directory(path)
+		if (not vfs.Enabled) then
+			return false
+		end
+
+		local object = vfs:Navigate(path)
+
+		return (object and object.Directory)
+	end
+
 	-- File:Read() method
 	local function file_read(self)
 		return self._contents
@@ -759,6 +779,11 @@ do
 	local function directory_close()
 	end
 
+	-- Clears the entire VFS.
+	function vfs:Clear()
+		self.Nodes = {}
+	end
+
 	-- Starts at a root node and navigates according to a module name
 	-- Add auto_dir to automatically create directories
 	-- If the path does not exist, or cannot be reached due to an invalid node,
@@ -776,8 +801,8 @@ do
 				location = location.Nodes[node]
 				table.insert(nodes, node)
 			elseif (auto_dir) then
-				location = vfs:AddDirectory(table.concat(nodes, "."))
 				table.insert(nodes, node)
+				location = vfs:AddDirectory(table.concat(nodes, "."))
 			else
 				return nil, location, nodes
 			end
@@ -830,16 +855,6 @@ do
 		end
 	end
 
-	function vfs:IsFile(path)
-		if (not self.Enabled) then
-			return false
-		end
-
-		local object = self:Navigate(path)
-
-		return (object and object.File)
-	end
-
 	function vfs:AddFile(path, contents, loader)
 		self.Enabled = true
 		loader = loader or load_with_env
@@ -877,16 +892,6 @@ do
 				FSID = self.ID
 			}
 		end
-	end
-
-	function vfs:IsDirectory(path)
-		if (not self.Enabled) then
-			return false
-		end
-
-		local object = self:Navigate(path)
-
-		return (object and object.Directory)
 	end
 
 	function vfs:AddDirectory(path)

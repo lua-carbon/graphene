@@ -4,11 +4,13 @@
 	Assumes that the VFS functions, tests the loader.
 ]]
 
-print("Graphene: Starting VFS Test...")
+print("Graphene: Starting Loader Test...")
 
 local Graphene = require("graphene")
 local G = Graphene:GetGrapheneCore()
 local vfs = G.FS:GetProvider("vfs")
+
+vfs:Clear()
 
 vfs:AddDirectory("Test")
 vfs:AddFile("Test._", [[ return {Name = "Test"} ]])
@@ -49,4 +51,6 @@ assert(Test.Embedded.Y.Friend.Name == "X", "Rebased library was not rebased corr
 assert(Other.Name == "Other", "Failed to load non-Test root library.")
 assert(Other.Actually, "Test.ActuallyOther was not re-aliased to Other.Actually.")
 
-print("Graphene: VFS tested passed.")
+vfs:Clear()
+
+print("Graphene: Loader tested passed.")
