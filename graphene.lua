@@ -48,29 +48,6 @@ function support:Report()
 	return table.concat(features, ", ")
 end
 
--- Contains our actual core
-local G = {
-	_loaded = {}, -- Dictionary of loaded modules for caching
-	_metadata = {},
-	_rebasing = {}, -- Contains rebasing information
-
-	Support = support, -- Table for fast support lookups
-	Version = g_version, -- Version table for programmatic comparisons
-	VersionString = g_versionstring, -- Version string for user-facing reporting
-
-	-- Filesystem abstraction
-	FS = {
-		Providers = {}
-	},
-
-	-- Configuration
-	Config = {
-		Lib = true,
-		FileExtensions = {".lua"},
-		InitFile = "_"
-	}
-}
-
 -- Do we have LFS?
 local ok, lfs = pcall(require, "lfs")
 if (not ok) then
@@ -195,43 +172,6 @@ elseif (support.lua52) then
 	end
 end
 
--- Provider is_directory and is_file fallbacks for systems without LFS.
-local is_directory
-local is_file
-
-if (support.lfs) then
-	function is_file(path)
-		return (lfs.attributes(path, "mode") == "file")
-	end
-
-	function is_directory(path)
-		return (lfs.attributes(path, "mode") == "directory")
-	end
-else
-	-- Reduced file functionality without LFS
-	function is_file(path)
-		local handle = io.open(path, "r")
-
-		if (handle) then
-			handle:close()
-
-			return true
-		end
-
-		return false
-	end
-
-	if (support.windows) then
-		function is_directory(path)
-			return (os.execute(("cd %q 2>nul"):format(path)) == 0)
-		end
-	else
-		function is_directory(path)
-			return (os.execute(("stat %q"):format(path)) == 0)
-		end
-	end
-end
-
 -- Find out a path for the directory above graphene
 local g_root
 local g_file = support.debug and debug.getinfo(1, "S").source:match("@(.+)$")
@@ -245,9 +185,35 @@ else
 	g_root = (...):match("(.+)%..-$")
 end
 
+-- Contains our actual core
+local G = {
+	_loaded = {}, -- Dictionary of loaded modules for caching
+	_metadata = {},
+	_rebasing = {}, -- Contains rebasing information
+
+	Support = support, -- Table for fast support lookups
+	Version = g_version, -- Version table for programmatic comparisons
+	VersionString = g_versionstring, -- Version string for user-facing reporting
+
+	-- Filesystem abstraction
+	FS = {
+		Providers = {}
+	},
+
+	-- Configuration
+	Config = {
+		Lib = true,
+		Loaders = {
+			[".lua"] = load_with_env
+		},
+		InitFile = "_"
+	}
+}
+
 -- Utility Methods
 
 --[[
+	DEPRECATED: Use path_to_filepath and file_paths instead
 	module_to_file(string source, bool is_directory=false)
 		source: The module path to parse
 		is_directory: Whether the output should be a file or directory.
@@ -298,26 +264,66 @@ local function path_join(first, second)
 end
 
 --[[
+	string path_to_filepath(string path)
+		path: The path to transform
+
+	Turns a period-delimitted string into a slash-delimitted string.
+]]
+local function path_to_filepath(path)
+	return (path:gsub("%.", "/"):gsub("//+", "/"))
+end
+
+--[[
 	string[] file_paths(string name, [bool is_directory, string[] paths])
 		name: The path to transform
 		is_directory: Whether or not this points to a directory
-		paths: The 
+		paths: A list of paths to search for files in. Similar to a system PATH variable.
 
 	Create a list of all acceptable file paths for a module path on a real filesystem.
 ]]
 local function file_paths(name, is_directory, paths)
-	local extensions = is_directory and {""} or G.Config.FileExtensions
 	local paths = paths or {""}
-	local filename = module_to_file(name)
+	local filename = path_to_filepath(name)
 	local result = {}
 
+	local extensions
+
+	-- Get a list of extensions from G.Config.Loaders
+	if (is_directory) then
+		extensions = {""}
+	else
+		extensions = {}
+		local loaders = G.Config.Loaders
+		for key, value in pairs(loaders) do
+			table.insert(extensions, key)
+		end
+	end
+
+	-- For every combination of path and extension, toss into the list.
 	for i, path in ipairs(paths) do
 		for j, extension in ipairs(extensions) do
-			table.insert(result, path_join(path, name) .. extension)
+			table.insert(result, path_join(path, filename) .. extension)
 		end
 	end
 
 	return result
+end
+
+--[[
+	function? loader_for_filepath(string filepath)
+		filepath: The path to a file on a real filesystem.
+
+	Returns a function capable of loading the given filepath.
+]]
+local function loader_for_filepath(filepath)
+	for name, loader in pairs(G.Config.Loaders) do
+		if (filepath:sub(-#name) == name) then
+			return loader
+		end
+	end
+
+	-- We couldn't find a loader
+	return nil
 end
 
 --[[
@@ -426,18 +432,12 @@ end
 	Provider.Path (LOVE and vanilla IO only)
 		Similar to a system PATH, where the provider looks for files.
 
-	bool Provider:IsFile(string path)
-			path: The module path to check.
-
 	Returns whether the specified path exists on this filesystem provider.
 
 	File Provider:GetFile(string path)
 		path: The module path to check.
 
 		Returns a file object corresponding to the given file on this filesystem.
-
-	bool Provider:IsDirectory(string path)
-		path: The module path to check.
 
 		Returns whether the specified path exists on this filesystem provider.
 
@@ -479,6 +479,9 @@ if (support.love) then
 	local file_buffer = {}
 	local directory_buffer = {}
 
+	local is_file = love.filesystem.isFile
+	local is_directory = love.filesystem.isDirectory
+
 	local function file_close(self)
 		table.insert(file_buffer, self)
 	end
@@ -501,19 +504,20 @@ if (support.love) then
 		return items
 	end
 
-	function love_fs:GetFile(path, filepath)
-		filepath = filepath or module_to_file(path)
+	function love_fs:GetFile(path, global_loader)
+		local paths = file_paths(path, false, self.Path)
 
-		for i, base in ipairs(self.Path) do
-			local fullpath = path_join(base, filepath)
+		for i, filepath in ipairs(paths) do
+			if (is_file(filepath)) then
+				local loader = global_loader or loader_for_filepath(filepath)
 
-			if (self:IsFile(path, fullpath)) then
 				local file = file_buffer[#file_buffer]
 				file_buffer[#file_buffer] = nil
 
 				if (file) then
 					file.Path = path
-					file.FilePath = fullpath
+					file.FilePath = filepath
+					file.Loader = loader
 
 					return file
 				else
@@ -521,33 +525,26 @@ if (support.love) then
 						Close = file_close,
 						Read = file_read,
 						Path = path,
-						FilePath = fullpath,
-						FSID = self.ID
+						FilePath = filepath,
+						FSID = self.ID,
+						Loader = loader
 					}
 				end
 			end
 		end
 	end
 
-	function love_fs:IsFile(path, filepath)
-		filepath = filepath or module_to_file(path)
+	function love_fs:GetDirectory(path)
+		local paths = file_paths(path, true, self.Path)
 
-		return love.filesystem.isFile(filepath)
-	end
-
-	function love_fs:GetDirectory(path, filepath)
-		filepath = filepath or module_to_file(path, true)
-
-		for i, base in ipairs(self.Path) do
-			local fullpath = path_join(base, filepath)
-
-			if (self:IsDirectory(path, fullpath)) then
+		for i, filepath in ipairs(paths) do
+			if (is_directory(path, filepath)) then
 				local directory = directory_buffer[#directory_buffer]
 				directory_buffer[#directory_buffer] = nil
 
 				if (directory) then
 					directory.Path = path
-					directory.FilePath = fullpath
+					directory.FilePath = filepath
 
 					return directory
 				else
@@ -555,18 +552,12 @@ if (support.love) then
 						Close = directory_close,
 						List = directory_list,
 						Path = path,
-						FilePath = fullpath,
+						FilePath = filepath,
 						FSID = self.ID
 					}
 				end
 			end
 		end
-	end
-
-	function love_fs:IsDirectory(path, filepath)
-		filepath = filepath or module_to_file(path, true)
-
-		return love.filesystem.isDirectory(filepath)
 	end
 end
 -- {% end %}
@@ -584,6 +575,43 @@ if (support.io) then
 	}
 
 	table.insert(G.FS.Providers, full_fs)
+
+	-- Provider is_directory and is_file fallbacks for systems without LFS.
+	local is_directory
+	local is_file
+
+	if (support.lfs) then
+		function is_file(path)
+			return (lfs.attributes(path, "mode") == "file")
+		end
+
+		function is_directory(path)
+			return (lfs.attributes(path, "mode") == "directory")
+		end
+	else
+		-- Reduced file functionality without LFS
+		function is_file(path)
+			local handle = io.open(path, "r")
+
+			if (handle) then
+				handle:close()
+
+				return true
+			end
+
+			return false
+		end
+
+		if (support.windows) then
+			function is_directory(path)
+				return (os.execute(("cd %q 1>nul 2>nul"):format(path)) == 0)
+			end
+		else
+			function is_directory(path)
+				return (os.execute(("stat %q"):format(path)) == 0)
+			end
+		end
+	end
 
 	local file_buffer = {}
 	local directory_buffer = {}
@@ -629,20 +657,20 @@ if (support.io) then
 		return paths
 	end
 
-	function full_fs:GetFile(path, filepath)
+	function full_fs:GetFile(path, global_loader)
 		local paths = file_paths(path, false, self.Path)
-		filepath = filepath or module_to_file(path)
 
-		for i, base in ipairs(self.Path) do
-			local fullpath = path_join(base, filepath)
+		for i, filepath in ipairs(paths) do
+			if (is_file(filepath)) then
+				local loader = global_loader or loader_for_filepath(filepath)
 
-			if (self:IsFile(path, fullpath)) then
 				local file = file_buffer[#file_buffer]
 				file_buffer[#file_buffer] = nil
 
 				if (file) then
 					file.Path = path
-					file.FilePath = fullpath
+					file.FilePath = filepath
+					file.Loader = loader
 
 					return file
 				else
@@ -650,37 +678,27 @@ if (support.io) then
 						Close = file_close,
 						Read = file_read,
 						Path = path,
-						FilePath = fullpath,
-						FSID = self.ID
+						FilePath = filepath,
+						FSID = self.ID,
+						Loader = loader
 					}
 				end
-
-				break
 			end
 		end
 	end
 
-	-- Is this a file?
-	function full_fs:IsFile(path, filepath)
-		filepath = filepath or module_to_file(path)
-
-		return is_file(filepath)
-	end
-
 	-- Returns a directory object
-	function full_fs:GetDirectory(path, filepath)
-		filepath = filepath or module_to_file(path, true)
+	function full_fs:GetDirectory(path)
+		local paths = file_paths(path, true, self.Path)
 
-		for i, base in ipairs(self.Path) do
-			local fullpath = path_join(base, filepath)
-
-			if (self:IsDirectory(path, fullpath)) then
+		for i, filepath in ipairs(paths) do
+			if (is_directory(filepath)) then
 				local directory = directory_buffer[#directory_buffer]
 				directory_buffer[#directory_buffer] = nil
 
 				if (directory) then
 					directory.Path = path
-					directory.FilePath = fullpath
+					directory.FilePath = filepath
 
 					return directory
 				else
@@ -688,7 +706,7 @@ if (support.io) then
 						Close = directory_close,
 						List = directory_list,
 						Path = path,
-						FilePath = fullpath,
+						FilePath = filepath,
 						FSID = self.ID
 					}
 				end
@@ -696,13 +714,6 @@ if (support.io) then
 				break
 			end
 		end
-	end
-
-	-- Is this a directory?
-	function full_fs:IsDirectory(path, filepath)
-		filepath = filepath or module_to_file(path, true)
-
-		return is_directory(filepath)
 	end
 end
 -- {% end %}
@@ -800,7 +811,7 @@ do
 		end
 	end
 
-	function vfs:GetFile(path)
+	function vfs:GetFile(path, global_loader)
 		if (not self.Enabled) then
 			return false
 		end
@@ -813,7 +824,8 @@ do
 				Read = file_read,
 				Close = file_close,
 				Path = path,
-				FSID = self.ID
+				FSID = self.ID,
+				Loader = global_loader or object.Loader or load_with_env
 			}
 		end
 	end
@@ -828,8 +840,9 @@ do
 		return (object and object.File)
 	end
 
-	function vfs:AddFile(path, contents)
+	function vfs:AddFile(path, contents, loader)
 		self.Enabled = true
+		loader = loader or load_with_env
 		local parent, leafless, leaf = self:LeafedNavigate(path, true)
 
 		-- leafless contains error state if parent is nil
@@ -839,7 +852,8 @@ do
 
 		local node = {
 			File = true,
-			Contents = contents
+			Contents = contents,
+			Loader = loader
 		}
 
 		parent.Nodes[leaf] = node
@@ -998,10 +1012,12 @@ local function load_file(file, base)
 
 	local meta = {
 		Path = file.Path,
-		FilePath = file.FilePath
+		FilePath = file.FilePath,
+		FSID = file.FSID,
+		Loader = file.Loader
 	}
 
-	local method = assert(load_with_env(file:Read(), file.Path))
+	local method = assert(file.Loader(file:Read(), file.Path))
 	local result = method(base or G.Base, meta)
 
 	return result, meta

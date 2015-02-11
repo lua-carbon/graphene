@@ -49,6 +49,4 @@ assert(Test.Embedded.Y.Friend.Name == "X", "Rebased library was not rebased corr
 assert(Other.Name == "Other", "Failed to load non-Test root library.")
 assert(Other.Actually, "Test.ActuallyOther was not re-aliased to Other.Actually.")
 
-print(Other.Actually, Test.ActuallyOther)
-
 print("Graphene: VFS tested passed.")

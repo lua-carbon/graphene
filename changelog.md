@@ -2,9 +2,15 @@
 
 ## 1.1.0 (in alpha)
 - Modules are now passed a `metadata` field that gives runtime information to the module.
-- FS abstractions now fill an `FSID` field that gives the ID of the filesystem abstraction.
+- FS providers now fill an `FSID` field that gives the ID of the filesystem abstraction.
+- FS providers now fill a `Loader` field determining what function should load the file. Defaults to a compatibility shim for `load`.
+- FS providers now internally use a common method for pathing, making way for frontend support.
+- FS providers no longer have to provide `IsFile` or `IsDirectory` methods, but these have been deprecated since 1.0.0.
 - Added `G:GetMetadata` for retrieving metadata of a module.
 - `G:Get` now returns a second item, the metadata of the loaded module, if it exists.
+- Removed `G.Config.FileExtensions`, replaced with `G.Config.Loaders`: it was undocumented anyways.
+- Added support for custom Lua frontends, like MoonScript, with `G.Config.Loaders`.
+- Improved LuaFileSystem fallbacks for Windows (notably for checking directory existence)
 
 ## 1.0.1
 - Fixed version check with LOVE 0.9.0
