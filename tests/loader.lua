@@ -1,5 +1,7 @@
 --[[
-	Graphene VFS Test
+	Graphene VFS-driven Loader Test
+
+	Assumes that the VFS functions, tests the loader.
 ]]
 
 print("Graphene: Starting VFS Test...")
@@ -11,6 +13,7 @@ local vfs = G.FS:GetProvider("vfs")
 vfs:AddDirectory("Test")
 vfs:AddFile("Test._", [[ return {Name = "Test"} ]])
 vfs:AddFile("Test.Hello", [[ (...).HelloFlag = true; return {Name = "Hello"} ]])
+vfs:AddFile("Test.ActuallyOther", [[ local _, meta = ...; meta.Path = "Other.Actually" return {Name = "Other.Actually"} ]])
 
 -- Test.Embedded is a hypothetical submodule that can run on its own
 -- We load it as a submodule below
@@ -43,6 +46,15 @@ assert(Test.Embedded.X.Name == "X", "Rebased library did not load properly.")
 assert(Test.Embedded.Y.Friend, "Rebased library was not rebased.")
 assert(Test.Embedded.Y.Friend.Name == "X", "Rebased library was not rebased correctly.")
 
-assert(Other.Name == "Other", "Failed to load non-Test root library")
+assert(Other.Name == "Other", "Failed to load non-Test root library.")
+assert(Other.Actually, "Test.ActuallyOther was not re-aliased to Other.Actually.")
+
+print(Other.Actually, Test.ActuallyOther)
 
 print("Graphene: VFS tested passed.")
+
+for key, module in ipairs(G:GetLoadedModules()) do
+	print(unpack(module))
+end
+
+print(G:GetMetadata("Other.Actually").Path)

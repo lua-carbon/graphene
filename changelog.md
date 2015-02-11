@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.1.0 (in alpha)
+- Modules are now passed a `metadata` field that gives runtime information to the module.
+- FS abstractions now fill an `FSID` field that gives the ID of the filesystem abstraction.
+- Added `G:GetMetadata` for retrieving metadata of a module.
+- `G:Get` now returns a second item, the metadata of the loaded module, if it exists.
+
 ## 1.0.1
 - Fixed version check with LOVE 0.9.0
 

@@ -1,5 +1,5 @@
 --[[
-	Graphene 1.0.1-release
+	Graphene 1.1.0-alpha
 	https://github.com/LPGhatguy/lua-graphene
 
 	Copyright (c) 2014 Lucien Greathouse (LPGhatguy)
@@ -23,7 +23,7 @@
 ]]
 
 -- Current graphene version
-local g_version = {1, 0, 1, "release"}
+local g_version = {1, 1, 0, "alpha"}
 local g_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(g_version))
 
 -- Determine Lua capabilities and library support
@@ -51,9 +51,10 @@ end
 -- Contains our actual core
 local G = {
 	_loaded = {}, -- Dictionary of loaded modules for caching
+	_metadata = {},
 	_rebasing = {}, -- Contains rebasing information
-	Support = support, -- Table for fast support lookups
 
+	Support = support, -- Table for fast support lookups
 	Version = g_version, -- Version table for programmatic comparisons
 	VersionString = g_versionstring, -- Version string for user-facing reporting
 
@@ -520,7 +521,8 @@ if (support.love) then
 						Close = file_close,
 						Read = file_read,
 						Path = path,
-						FilePath = fullpath
+						FilePath = fullpath,
+						FSID = self.ID
 					}
 				end
 			end
@@ -553,7 +555,8 @@ if (support.love) then
 						Close = directory_close,
 						List = directory_list,
 						Path = path,
-						FilePath = fullpath
+						FilePath = fullpath,
+						FSID = self.ID
 					}
 				end
 			end
@@ -647,7 +650,8 @@ if (support.io) then
 						Close = file_close,
 						Read = file_read,
 						Path = path,
-						FilePath = fullpath
+						FilePath = fullpath,
+						FSID = self.ID
 					}
 				end
 
@@ -684,7 +688,8 @@ if (support.io) then
 						Close = directory_close,
 						List = directory_list,
 						Path = path,
-						FilePath = fullpath
+						FilePath = fullpath,
+						FSID = self.ID
 					}
 				end
 
@@ -807,7 +812,8 @@ do
 				_contents = object.Contents,
 				Read = file_read,
 				Close = file_close,
-				Path = path
+				Path = path,
+				FSID = self.ID
 			}
 		end
 	end
@@ -853,7 +859,8 @@ do
 				_nodes = object.Nodes,
 				List = directory_list,
 				Close = directory_close,
-				Path = path
+				Path = path,
+				FSID = self.ID
 			}
 		end
 	end
@@ -989,10 +996,15 @@ local function load_file(file, base)
 		error(("File at %q could not be loaded: %s"):format(file.Path, err))
 	end
 
-	local method = assert(load_with_env(file:Read(), file.Path))
-	local result = method(base or G.Base, file.Path)
+	local meta = {
+		Path = file.Path,
+		FilePath = file.FilePath
+	}
 
-	return result
+	local method = assert(load_with_env(file:Read(), file.Path))
+	local result = method(base or G.Base, meta)
+
+	return result, meta
 end
 
 --===============--
@@ -1002,6 +1014,43 @@ end
 -- This library can be accessed by any codefile by using
 -- Directory:GetGrapheneCore()
 -- on any Graphene directory.
+
+--[[
+	List G:GetLoadedModules([string path])
+		path: An optional path to check for modules in, defaults to an empty string.
+
+	Returns a list of loaded modules within the given path. If not specified, returns all loaded modules.
+	Each element of the list has the following components:
+		Index 1: The module object itself.
+		Index 2..n: The names this module goes by according to Graphene.
+]]
+function G:GetLoadedModules(path)
+	path = path and "^" .. path or ""
+
+	local len_path = #path
+
+	-- First, build a hashmap of module->{names} to ensure module uniqueness.
+	local map = {}
+	for name, module in pairs(self._loaded) do
+		if (name:match(path)) then
+			if (map[module]) then
+				table.insert(map[module], name)
+			else
+				map[module] = {name}
+			end
+		end
+	end
+
+	-- Then, transform the map into a list, not preserving the original map.
+	-- The first key becomes the module itself with the following keys being the names for it.
+	local list = {}
+	for module, names in pairs(map) do
+		table.insert(names, 1, module)
+		table.insert(list, names)
+	end
+
+	return list
+end
 
 --[[
 	void G:AddRebase(string path)
@@ -1106,6 +1155,17 @@ function G:CreateDirectory(path, directory)
 end
 
 --[[
+	table? G:GetMetadata(string? path)
+		path: The path of the module. If not specified, queries the root module.
+
+	Returns the metadata object associated with the path.
+	If the module has not been loaded, it is loaded.
+]]
+function G:GetMetadata(path)
+	return select(2, G:Get(path))
+end
+
+--[[
 	any? G:Get([string path, table target, any key])
 		path: The path to the module, period delimitted. If not given, it becomes an empty string.
 		target: A container to load the result into.
@@ -1133,7 +1193,7 @@ function G:Get(path, target, key)
 			target[key] = self._loaded[path]
 		end
 
-		return self._loaded[path]
+		return self._loaded[path], self._metadata[path]
 	end
 
 	-- Run path through our rebasing rules
@@ -1150,17 +1210,20 @@ function G:Get(path, target, key)
 	local file = G.FS:GetFile(path)
 
 	if (file) then
-		local object = load_file(file, base)
+		local object, meta = load_file(file, base)
 		file:Close()
 
 		if (object) then
+			path = meta.Path or path
 			self._loaded[path] = object
 
 			if (do_placement) then
 				target[key] = object
 			end
 
-			return object
+			self._metadata[path] = meta
+
+			return object, meta
 		end
 	else
 		-- How about a directory?
@@ -1177,7 +1240,7 @@ function G:Get(path, target, key)
 				end
 
 				-- Check for init file
-				local init = self:Get(module_join(path, self.Config.InitFile))
+				local init, meta = self:Get(module_join(path, self.Config.InitFile))
 
 				if (init) then
 					-- If init is a table, we should set up metatable fallbacks
@@ -1186,13 +1249,18 @@ function G:Get(path, target, key)
 						setmetatable(init, dictionary_shallow_merge(getmetatable(object), getmetatable(init) or {}))
 					end
 
+					-- Get rid of the only path and load up a new one according to our metadata directive.
+					self._loaded[path] = nil
+					path = meta.Path or path
 					self._loaded[path] = init
 
 					if (do_placement) then
 						target[key] = init
 					end
 
-					return init
+					self._metadata[path] = meta
+
+					return init, meta
 				end
 
 				return object
@@ -1205,7 +1273,7 @@ end
 
 -- If the Lib switch is set, make our base the current namespace instead of the Graphene core.
 -- This is the default and recommended functionality.
--- To retrieve the core, use :GetGrapheneCore() on this.
+-- To retrieve the core, use :GetGrapheneCore() on this object.
 if (G.Config.Lib) then
 	G:Get(nil, G, "Base")
 else
