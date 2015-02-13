@@ -7,6 +7,8 @@
 - FS providers now internally use a common method for pathing, making way for frontend support.
 - FS providers no longer have to provide `IsFile` or `IsDirectory` methods, but these have been deprecated since 1.0.0.
 - Added `G:GetMetadata` for retrieving metadata of a module.
+- Added `G.Directory` reference to local directory object.
+- Added `Directory:Import`, `Directory:ImportAs`, and `Directory:ImportAll` for importing loaded modules.
 - `G:Get` now returns a second item, the metadata of the loaded module, if it exists.
 - Removed `G.Config.FileExtensions`, replaced with `G.Config.Loaders`: it was undocumented anyways.
 - Added support for custom Lua frontends, like MoonScript, with `G.Config.Loaders`.

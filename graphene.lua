@@ -213,22 +213,6 @@ local G = {
 -- Utility Methods
 
 --[[
-	DEPRECATED: Use path_to_filepath and file_paths instead
-	module_to_file(string source, bool is_directory=false)
-		source: The module path to parse
-		is_directory: Whether the output should be a file or directory.
-
-	Takes a module path (a.b.c) and turns it into a somewhat well-formed file path.
-	If is_directory is true, the output will look like:
-		a/b/c
-	Otherwise:
-		a/b/c.lua
-]]
-local function module_to_file(source, is_directory)
-	return (source:gsub("%.", "/") .. (is_directory and "" or ".lua"))
-end
-
---[[
 	(string module, bool is_directory) file_to_module(string source)
 		source: The file path to be turned into a module path.
 
@@ -360,6 +344,30 @@ local function dictionary_shallow_merge(from, to)
 	end
 
 	return to
+end
+
+--[[
+	void import_dict(table source)
+		source: The dictionary containing data to import
+
+	Imports a dictionary (like a namespace).
+]]
+local import_dict
+if (support.lua51) then
+	function import_dict(source, level)
+		level = level and level + 2 or 2
+		local cenv = getfenv(level)
+
+		if (cenv == _G) then
+			cenv = setmetatable({}, {__index = _G})
+			setfenv(level, cenv)
+		end
+
+		dictionary_shallow_copy(source, cenv)
+	end
+else
+	function import_dict(source)
+	end
 end
 
 -- Filesystem Abstractions
@@ -923,6 +931,7 @@ local indexable = {
 }
 
 local directory_interface = {}
+G.Directory = directory_interface
 
 --[[
 	G Directory:GetGrapheneCore()
@@ -975,6 +984,46 @@ function directory_interface:CreateGrapheneSubdirectory(path)
 	end
 
 	return G:CreateDirectory(module_join(self.__directory.Path, path))
+end
+
+--[[
+	void Directory:ImportAs(table mapping)
+		mapping: Table mapping module names to their target names
+
+	Imports a directory using a defined mapping of aliases.
+]]
+function directory_interface:ImportAs(mapping)
+	local fake = {}
+	for key, value in pairs(mapping) do
+		fake[value] = self[key]
+	end
+
+	import_dict(fake, 1)
+end
+
+--[[
+	void Directory:Import(...)
+
+	Imports the given members from the library.
+]]
+function directory_interface:Import(...)
+	local fake = {}
+	for i = 1, select("#", ...) do
+		fake[select(i, ...)] = self[select(i, ...)]
+	end
+
+	import_dict(fake, 1)
+end
+
+--[[
+	void Directory:ImportAll()
+
+	Loads the entire library and imports all of its members.
+]]
+function directory_interface:ImportAll()
+	self:FullyLoad()
+
+	import_dict(self, 1)
 end
 
 --[[
