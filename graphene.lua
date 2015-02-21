@@ -367,6 +367,22 @@ if (support.lua51) then
 	end
 else
 	function import_dict(source)
+		local upenv, upenv_key
+		local this = debug.getinfo(1).func
+		local i = 0
+		repeat
+			i = i + 1
+			local k, v = debug.getupvalue(this, i)
+			if (k == "_ENV") then
+				upenv = v
+				upenv_key = i
+			end
+		until not k
+
+		local env = setmetatable({}, {__index = _G})
+		debug.setupvalue(this, upenv_key, env)
+
+		dictionary_shallow_copy(source, env)
 	end
 end
 
@@ -610,13 +626,24 @@ if (support.io) then
 			return false
 		end
 
+		local execute_success
+		if (support.lua51) then
+			function execute_success(...)
+				return os.execute(...) == 0
+			end
+		else
+			function execute_success(...)
+				return os.execute(...)
+			end
+		end
+
 		if (support.windows) then
 			function is_directory(path)
-				return (os.execute(("cd %q 1>nul 2>nul"):format(path)) == 0)
+				return execute_success(("cd %q 1>nul 2>nul"):format(path))
 			end
 		else
 			function is_directory(path)
-				return (os.execute(("stat %q"):format(path)) == 0)
+				return execute_success(("stat %q"):format(path)) == 0
 			end
 		end
 	end
