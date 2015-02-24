@@ -13,6 +13,10 @@
 - Removed `G.Config.FileExtensions`, replaced with `G.Config.Loaders`: it was undocumented anyways.
 - Added support for custom Lua frontends, like MoonScript, with `G.Config.Loaders`.
 - Improved LuaFileSystem fallbacks for Windows (notably for checking directory existence)
+- Support modules now use public-style naming as they were supposed to in 1.0.
+- Deprecated methods, these will be removed in 2.0:
+	- `Directory:GetGrapheneCore`, use `Directory:GetGraphene` instead.
+	- `G:ClearRebases`, use `G:ClearSubmodules` instead.
 
 ## 1.0.1
 - Fixed version check with LOVE 0.9.0

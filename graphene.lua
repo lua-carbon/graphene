@@ -38,8 +38,8 @@ function support:Report()
 	local features = {}
 
 	for feature, enabled in pairs(self) do
-		if (type(enabled) == "table" and enabled.report) then
-			table.insert(features, enabled:report())
+		if (type(enabled) == "table" and enabled.Report) then
+			table.insert(features, enabled:Report())
 		elseif (type(enabled) ~= "function") then
 			table.insert(features, feature)
 		end
@@ -113,7 +113,7 @@ if (love) then
 
 	-- return a nice report of the current LOVE version
 	function support.love:report()
-		return ("love %d.%d.%d (%s)"):format(unpack(self.version))
+		return ("love %d.%d.%d (%s)"):format(unpack(self.Version))
 	end
 
 	if (love.getVersion) then
@@ -966,9 +966,12 @@ G.Directory = directory_interface
 	Returns the Graphene core, defined as G in this file.
 	Not affected by any rebasing rules.
 ]]
-function directory_interface:GetGrapheneCore()
+function directory_interface:GetGraphene()
 	return G
 end
+
+-- DEPRECATED: GetGrapheneCore -> GetGraphene
+directory_interface.GetGrapheneCore = directory_interface.GetGraphene
 
 --[[
 	void Directory:AddGrapheneSubmodule(string path)
@@ -1171,11 +1174,14 @@ end
 
 	Removes all rebasing rules from the core.
 ]]
-function G:ClearRebases()
+function G:ClearSubmodules()
 	for key, value in pairs(self._rebasing) do
 		self._rebasing[key] = nil
 	end
 end
+
+-- DEPRECATED: G:ClearRebases() --> G:ClearSubmodules()
+G.ClearRebases = G.ClearSubmodules
 
 --[[
 	void G:Alias(string path, any object)
