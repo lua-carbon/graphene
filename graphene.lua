@@ -112,7 +112,7 @@ if (love) then
 	support.love = {}
 
 	-- return a nice report of the current LOVE version
-	function support.love:report()
+	function support.love:Report()
 		return ("love %d.%d.%d (%s)"):format(unpack(self.Version))
 	end
 
@@ -121,7 +121,7 @@ if (love) then
 		support.love.Version = {love.getVersion()}
 	else
 		-- LOVE 0.9.0 and older; may be supported
-		local major = love._version_minor
+		local major = love._version_major
 		local minor = love._version_minor
 
 		if (major == 0) then
