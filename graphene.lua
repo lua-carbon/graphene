@@ -562,7 +562,7 @@ if (support.love) then
 		local paths = file_paths(path, true, self.Path)
 
 		for i, filepath in ipairs(paths) do
-			if (is_directory(path, filepath)) then
+			if (is_directory(filepath)) then
 				local directory = directory_buffer[#directory_buffer]
 				directory_buffer[#directory_buffer] = nil
 
