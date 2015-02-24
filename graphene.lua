@@ -522,7 +522,7 @@ if (support.love) then
 		local items = love.filesystem.getDirectoryItems(self.FilePath)
 
 		for i = 1, #items do
-			items[i] = module_join(self.Path, file_to_module(items[i]))
+			items[i] = file_to_module(items[i])
 		end
 
 		return items
