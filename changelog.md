@@ -1,7 +1,7 @@
 # Change Log
 
 ![1.1.0](https://img.shields.io/badge/1.1.0-in_development-orange.svg?style=flat-square)
-- Numerous filesystem fixes for 
+- Numerous filesystem fixes for LOVE
 - Modules are now passed a `metadata` field that gives runtime information to the module.
 - FS providers now fill an `FSID` field that gives the ID of the filesystem abstraction.
 - FS providers now fill a `Loader` field determining what function should load the file. Defaults to a compatibility shim for `load`.
@@ -20,6 +20,7 @@
 	- `G:ClearRebases`, use `G:ClearSubmodules` instead.
 - Directories now have an "IsDirectory" member to mark them as Graphene directories.
 - Internal renaming: this should not affect existing modules
+- Improved Lua 5.2 compatiblity.
 
 ![1.0.1](https://img.shields.io/badge/1.0.1-latest-brightgreen.svg?style=flat-square)
 - Fixed version check with LOVE 0.9.0
