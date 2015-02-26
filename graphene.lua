@@ -187,9 +187,10 @@ end
 
 -- Contains our actual core
 local G = {
-	_loaded = {}, -- Dictionary of loaded modules for caching
-	_metadata = {},
-	_rebasing = {}, -- Contains rebasing information
+	__load_callback = nil, -- User-specified callback for hooking into module loads.
+	__loading = {}, -- Dictionary of loaded modules for caching
+	__metadata = {}, -- Contains module metadata
+	__submodules = {}, -- Contains submodule information
 
 	Support = support, -- Table for fast support lookups
 	Version = g_version, -- Version table for programmatic comparisons
@@ -366,23 +367,8 @@ if (support.lua51) then
 		dictionary_shallow_copy(source, cenv)
 	end
 else
-	function import_dict(source)
-		local upenv, upenv_key
-		local this = debug.getinfo(1).func
-		local i = 0
-		repeat
-			i = i + 1
-			local k, v = debug.getupvalue(this, i)
-			if (k == "_ENV") then
-				upenv = v
-				upenv_key = i
-			end
-		until not k
-
-		local env = setmetatable({}, {__index = _G})
-		debug.setupvalue(this, upenv_key, env)
-
-		dictionary_shallow_copy(source, env)
+	function import_dict(source, level)
+		error("Cannot import under Lua 5.2+!", level + 2 or 2)
 	end
 end
 
@@ -957,7 +943,9 @@ local indexable = {
 	userdata = true
 }
 
-local directory_interface = {}
+local directory_interface = {
+	IsDirectory = true
+}
 G.Directory = directory_interface
 
 --[[
@@ -999,7 +987,7 @@ function directory_interface:AddGrapheneAlias(path, object)
 		error("Bad argument #1: module alias path must be a string!", 2)
 	end
 
-	G._loaded[module_join(self.__directory.Path, path)] = object
+	G.__loading[module_join(self.__directory.Path, path)] = object
 end
 
 --[[
@@ -1065,13 +1053,15 @@ function directory_interface:FullyLoad()
 	local list = self.__directory:List()
 
 	for i, member in ipairs(list) do
-		local object = self[member]
+		if (member ~= G.Config.InitFile) then
+			local object = self[member]
 
-		-- Make sure we have an object that isn't this one (necessary because of _.lua).
-		-- Also make sure that it's got a FullyLoad method, which makes it either a directory
-		-- or something trying to emulate a directory, probably.
-		if (object and object ~= self and type(object) == "table" and object.FullyLoad) then
-			object:FullyLoad()
+			-- Make sure we have an object that isn't this one (necessary because of _.lua).
+			-- Also make sure that it's got a FullyLoad method, which makes it either a directory
+			-- or something trying to emulate a directory, probably.
+			if (object and object ~= self and type(object) == "table" and object.FullyLoad) then
+				object:FullyLoad()
+			end
 		end
 	end
 
@@ -1131,7 +1121,7 @@ function G:GetLoadedModules(path)
 
 	-- First, build a hashmap of module->{names} to ensure module uniqueness.
 	local map = {}
-	for name, module in pairs(self._loaded) do
+	for name, module in pairs(self.__loading) do
 		if (name:match(path)) then
 			if (map[module]) then
 				table.insert(map[module], name)
@@ -1166,7 +1156,7 @@ function G:AddSubmodule(path)
 		error("Bad argument #1: module path must be a string", 2)
 	end
 
-	table.insert(self._rebasing, {"^" .. path:gsub("%.", "%%."), path})
+	table.insert(self.__submodules, {"^" .. path:gsub("%.", "%%."), path})
 end
 
 --[[
@@ -1175,8 +1165,8 @@ end
 	Removes all rebasing rules from the core.
 ]]
 function G:ClearSubmodules()
-	for key, value in pairs(self._rebasing) do
-		self._rebasing[key] = nil
+	for key, value in pairs(self.__submodules) do
+		self.__submodules[key] = nil
 	end
 end
 
@@ -1195,7 +1185,7 @@ function G:Alias(path, object)
 		error("Bad argument #1: module path must be a string.", 2)
 	end
 
-	self._loaded[path] = object
+	self.__loading[path] = object
 end
 
 --[[
@@ -1258,6 +1248,16 @@ function G:CreateDirectory(path, directory)
 end
 
 --[[
+	void G:SetLoadCallback(function method)
+		method: The callback to set.
+
+	Sets the method that should be called when a module is loaded by Graphene.
+]]
+function G:SetLoadCallback(method)
+	self.__load_callback = method
+end
+
+--[[
 	table? G:GetMetadata(string? path)
 		path: The path of the module. If not specified, queries the root module.
 
@@ -1291,19 +1291,19 @@ function G:Get(path, target, key)
 	local do_placement = not not (target and key)
 
 	-- Check for already loaded module!
-	if (self._loaded[path]) then
+	if (self.__loading[path]) then
 		if (do_placement) then
-			target[key] = self._loaded[path]
+			target[key] = self.__loading[path]
 		end
 
-		return self._loaded[path], self._metadata[path]
+		return self.__loading[path], self.__metadata[path]
 	end
 
 	-- Run path through our rebasing rules
 	local base = G.Base
-	for i, rebase in ipairs(self._rebasing) do
+	for i, rebase in ipairs(self.__submodules) do
 		if (path:match(rebase[1])) then
-			base = self._loaded[rebase[2]] or G.Base
+			base = self.__loading[rebase[2]] or G.Base
 
 			break
 		end
@@ -1318,13 +1318,17 @@ function G:Get(path, target, key)
 
 		if (object) then
 			path = meta.Path or path
-			self._loaded[path] = object
+			self.__loading[path] = object
 
 			if (do_placement) then
 				target[key] = object
 			end
 
-			self._metadata[path] = meta
+			self.__metadata[path] = meta
+
+			if (self.__load_callback) then
+				self.__load_callback(object, meta)
+			end
 
 			return object, meta
 		end
@@ -1336,7 +1340,7 @@ function G:Get(path, target, key)
 			local object = self:CreateDirectory(path, directory)
 
 			if (object) then
-				self._loaded[path] = object
+				self.__loading[path] = object
 
 				if (do_placement) then
 					target[key] = object
@@ -1352,18 +1356,26 @@ function G:Get(path, target, key)
 						setmetatable(init, dictionary_shallow_merge(getmetatable(object), getmetatable(init) or {}))
 					end
 
-					-- Get rid of the only path and load up a new one according to our metadata directive.
-					self._loaded[path] = nil
+					-- Get rid of the old path and load into a new one according to our metadata directive.
+					self.__metadata[path] = nil
+					self.__loading[path] = nil
 					path = meta.Path or path
-					self._loaded[path] = init
+					self.__loading[path] = init
+					self.__metadata[path] = meta
 
 					if (do_placement) then
 						target[key] = init
 					end
 
-					self._metadata[path] = meta
+					if (self.__load_callback) then
+						self.__load_callback(init, meta)
+					end
 
 					return init, meta
+				end
+
+				if (self.__load_callback) then
+					self.__load_callback(object)
 				end
 
 				return object
@@ -1376,7 +1388,7 @@ end
 
 -- If the Lib switch is set, make our base the current namespace instead of the Graphene core.
 -- This is the default and recommended functionality.
--- To retrieve the core, use :GetGrapheneCore() on this object.
+-- To retrieve the core, use :GetGraphene() on this object.
 if (G.Config.Lib) then
 	G:Get(nil, G, "Base")
 else

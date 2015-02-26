@@ -1,6 +1,7 @@
 # Change Log
 
-## 1.1.0 (in alpha)
+![1.1.0](https://img.shields.io/badge/1.1.0-in_development-orange.svg?style=flat-square)
+- Numerous filesystem fixes for 
 - Modules are now passed a `metadata` field that gives runtime information to the module.
 - FS providers now fill an `FSID` field that gives the ID of the filesystem abstraction.
 - FS providers now fill a `Loader` field determining what function should load the file. Defaults to a compatibility shim for `load`.
@@ -17,11 +18,13 @@
 - Deprecated methods, these will be removed in 2.0:
 	- `Directory:GetGrapheneCore`, use `Directory:GetGraphene` instead.
 	- `G:ClearRebases`, use `G:ClearSubmodules` instead.
+- Directories now have an "IsDirectory" member to mark them as Graphene directories.
+- Internal renaming: this should not affect existing modules
 
-## 1.0.1
+![1.0.1](https://img.shields.io/badge/1.0.1-latest-brightgreen.svg?style=flat-square)
 - Fixed version check with LOVE 0.9.0
 
-## 1.0.0
+![1.0.0](https://img.shields.io/badge/1.0.0-unsupported-red.svg?style=flat-square)
 - Renamed library to Graphene.
 - `GetNamespaceCore` renamed to `GetGrapheneCore`.
 - Recommended variable to reference the graphene core is now G.
@@ -43,7 +46,7 @@
 - Removed explicit hate support, it can be aliased as `love` for filesystem support.
 - Removed explicit ROBLOX support, this might come back in the future.
 
-## 0.4.0
+![0.4.0](https://img.shields.io/badge/0.4.0-unsupported-red.svg?style=flat-square)
 - Case changed to PascalCase for public API.
 - Added VFS unit test, since it's a little fragile.
 - Vanilla Lua now has a non-LFS fallback.
@@ -53,20 +56,20 @@
 - Added rebasing semantics with N:AddRebase, see the VFS unit test.
 - Clearer documentation on all internal methods.
 
-## 0.3.1
+![0.3.1](https://img.shields.io/badge/0.3.1-unsupported-red.svg?style=flat-square)
 - Circular reference detection
 
-## 0.3.0
+![0.3.0](https://img.shields.io/badge/0.3.0-unsupported-red.svg?style=flat-square)
 - Directory loads now load `_.lua` in the directory if it exists.
 
-## 0.2.1
+![0.2.1](https://img.shields.io/badge/0.2.1-unsupported-red.svg?style=flat-square)
 - Namespaces in `.` now function properly.
 
-## 0.2.0
+![0.2.0](https://img.shields.io/badge/0.2.0-unsupported-red.svg?style=flat-square)
 - VFS now has lowest priority
 - Pathing now works as expected
 - `config.path` moved to FS provider's path variable
 - By default, returns namespace unless `namespace.config.lib` is set to `false`.
 
-## 0.1.0
+![0.1.0](https://img.shields.io/badge/0.1.0-unsupported-red.svg?style=flat-square)
 - Initial release

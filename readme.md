@@ -1,4 +1,12 @@
 # Graphene for Lua
+![shield_license]
+![shield_build]
+![shield_tests]
+
+![shield_release_version]
+![shield_prerelease_version]
+![shield_dev_version]
+
 Graphene is a library intended to make creation of large Lua libraries easier by providing a common structure to handle library includes in a sane way. It provides namespacing semantics similar to .NET that map directly to the filesystem.
 
 Graphene obsoletes `lcore` but does not necessarily replace it: Graphene takes place of the lcore core, with new libraries planned to replace what was once core.
@@ -35,3 +43,10 @@ And then code using the library can look like this:
 local library = require("library")
 print(library.one.name) --> one
 ```
+
+[shield_license]: https://img.shields.io/badge/license-zlib/libpng-333333.svg?style=flat-square
+[shield_build]: https://img.shields.io/badge/build-unknown-lightgrey.svg?style=flat-square
+[shield_tests]: https://img.shields.io/badge/tests-0/0-lightgrey.svg?style=flat-square
+[shield_release_version]: https://img.shields.io/github/release/lua-carbon/graphene.svg?style=flat-square
+[shield_prerelease_version]: https://img.shields.io/github/tag/lua-carbon/graphene.svg?style=flat-square&label=prerelease
+[shield_dev_version]: https://img.shields.io/badge/development-v1.1.0-orange.svg?style=flat-square
