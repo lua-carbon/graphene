@@ -1095,9 +1095,9 @@ local function load_file(file, base)
 		end
 
 		if (G.__safe) then
-				return false, result
+			return false, result
 		else
-			result = method(Base or G.Base, meta)
+			error(result)
 		end
 	end
 
