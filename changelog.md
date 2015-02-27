@@ -7,6 +7,9 @@
 - FS providers now fill a `Loader` field determining what function should load the file. Defaults to a compatibility shim for `load`.
 - FS providers now internally use a common method for pathing, making way for frontend support.
 - FS providers no longer have to provide `IsFile` or `IsDirectory` methods, but these have been deprecated since 1.0.0.
+- Added `G:SetLoadCallback` and `G:GetLoadCallback` for setting notification of loaded modules.
+- Added `G:SetErrorCallback` and `G:SetErrorCallback` for setting notification of errors in modules.
+- Added `G:SetSafeMode` for enabling automatic error catching on loaded modules.
 - Added `G:GetMetadata` for retrieving metadata of a module.
 - Added `G:SetMetadata` for adding metadata about an object.
 - Added `G.Directory` reference to local directory object.
