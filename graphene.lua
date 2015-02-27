@@ -1143,6 +1143,27 @@ end
 -- Directory:GetGrapheneCore()
 -- on any Graphene directory.
 
+G.__importable = {
+	Import = G.Directory.Import,
+	ImportAs = G.Directory.ImportAs
+}
+
+function G.__importable:ImportAll()
+	import_dict(self, 1)
+end
+
+--[[
+	self G:MakeImportable(table object)
+		object: The object to augment.
+
+	Makes an object importable like a Graphene Directory.
+]]
+function G:MakeImportable(object)
+	dictionary_shallow_copy(self.__importable, object)
+
+	return object
+end
+
 --[[
 	List G:GetLoadedModules([string path])
 		path: An optional path to check for modules in, defaults to an empty string.

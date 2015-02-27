@@ -13,7 +13,7 @@
 - Added `G:GetMetadata` for retrieving metadata of a module.
 - Added `G:SetMetadata` for adding metadata about an object.
 - Added `G.Directory` reference to local directory object.
-- Added `Directory:Import`, `Directory:ImportAs`, and `Directory:ImportAll` for importing loaded modules.
+- Added `Directory:Import`, `Directory:ImportAs`, `Directory:ImportAll`, and `G:MakeImportable` for importing loaded modules.
 - `G:Get` now returns a second item, the metadata of the loaded module, if it exists.
 - Removed `G.Config.FileExtensions`, replaced with `G.Config.Loaders`: it was undocumented anyways.
 - Added support for custom Lua frontends, like MoonScript, with `G.Config.Loaders`.
