@@ -10,8 +10,7 @@
 - Added `G:SetLoadCallback` and `G:GetLoadCallback` for setting notification of loaded modules.
 - Added `G:SetErrorCallback` and `G:SetErrorCallback` for setting notification of errors in modules.
 - Added `G:SetSafeMode` for enabling automatic error catching on loaded modules.
-- Added `G:GetMetadata` for retrieving metadata of a module.
-- Added `G:SetMetadata` for adding metadata about an object.
+- Added `G.Metadata` for storing/retrieving object metadata.
 - Added `G.Directory` reference to local directory object.
 - Added `Directory:Import`, `Directory:ImportAs`, `Directory:ImportAll`, and `G:MakeImportable` for importing loaded modules.
 - `G:Get` now returns a second item, the metadata of the loaded module, if it exists.
