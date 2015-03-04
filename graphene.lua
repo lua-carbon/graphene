@@ -1586,7 +1586,6 @@ function G:Get(path, target, key)
 					end
 
 					-- Get rid of the old path and load into a new one according to our metadata directive.
-					self.__loaded[path] = nil
 
 					path = meta.Path or path
 
