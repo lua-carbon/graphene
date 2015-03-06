@@ -1,10 +1,10 @@
 --[[
-	Graphene 1.1.0-alpha
+	Graphene 1.1.0-alpha2
 	https://github.com/lua-carbon/graphene
 ]]
 
 -- Current graphene version
-local g_version = {1, 1, 0, "alpha"}
+local g_version = {1, 1, 0, "alpha2"}
 local g_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(g_version))
 
 -- Determine Lua capabilities and library support
@@ -163,7 +163,7 @@ if (g_file) then
 else
 	print("Could not locate lua-graphene source file; is debug info stripped?")
 	print("This code path is untested.")
-	g_root = (...):match("(.+)%..-$")
+	g_root = (...):match("(.+)%..-$"):gsub("[\\/]+", ".")
 end
 
 -- Contains our actual core
