@@ -13,6 +13,8 @@ Graphene obsoletes `lcore` but does not necessarily replace it: Graphene takes p
 
 To create a library intended for use with Graphene, make the init.lua of the root folder contain the contents of `graphene.lua`. Then, when the folder containing your library is required, a Graphene namespace will be returned that facilitates loading the rest of your library. What used to be `init.lua` in a library should then become `_.lua`, which is automatically loaded by Graphene to initialize directories.
 
+See [Rationale](docs/rationale.md) for an argument for, and potentially against Graphene.
+
 ## Support
 Graphene presently runs under the following platforms natively:
 - Lua 5.1+ with or without LuaFileSystem

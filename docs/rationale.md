@@ -117,14 +117,14 @@ Pros:
 - Simple setup
 - Clean, filesystem-correlated namespaces
 - Extra features!
-	- Metadata infrastructure
+	- Metadata infrastructure for modules and their contents
 	- Language extension capabilities
 	- LFS integration for directory listing, module listing, and dynamic loading
 	- Library import via Directory and Importable objects
 	- Built-in filesystem abstraction for all platforms and virtual filesystem
 	- Submodules: run Graphene libraries inside of eachother with no code changes
 	- Deep introspective facilities: hook into loads and errors, use safe mode to probe for modules
-	- Configurable: change lots of stuff at runtime!
+	- Configurable: change everything at runtime
 
 Cons:
 - Rather large (~1600 lines at the time of writing)
