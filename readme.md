@@ -25,10 +25,10 @@ Any platforms not officially supported can use the included virtual filesystem, 
 
 ## Sample Usage
 
-Objects loaded through Graphene will have a source something like this:
+Libraries using Graphene will have a source similar to:
 
+library/one.lua:
 ```lua
--- library/one.lua
 local library = (...)
 local two = library.two
 
