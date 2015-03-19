@@ -163,7 +163,7 @@ if (g_file) then
 else
 	print("Could not locate lua-graphene source file; is debug info stripped?")
 	print("This code path is untested.")
-	g_root = (...):match("(.+)%..-$"):gsub("[\\/]+", ".")
+	g_root = ((...):match("(.+)%..-$") or ""):gsub("%.", "/")
 end
 
 -- Contains our actual core
@@ -1180,6 +1180,13 @@ function G.Importable:Only(block)
 	return self
 end
 
+local function xerrhand(...)
+	return ("\n%s\n%s"):format(
+		tostring(...),
+		debug.traceback()
+	)
+end
+
 --[[
 	any? load_file(string path, any? base)
 		path: The module path of the file.
@@ -1219,7 +1226,7 @@ local function load_file(file, base)
 		end
 	end
 
-	local ok, result = pcall(method, base or G.base, meta)
+	local ok, result = xpcall(method, xerrhand, base or G.base, meta)
 	if (not ok) then
 		if (G.__error_callback) then
 			G.__error_callback("run", result)
