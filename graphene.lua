@@ -149,7 +149,7 @@ if (support.lua51) then
 	end
 elseif (support.lua52) then
 	function load_with_env(source, from, environment)
-		return load(source, from, nil, environment)
+		return load(source, from, nil, environment or _ENV)
 	end
 end
 
