@@ -1,5 +1,5 @@
 --[[
-	Graphene 1.1.0-beta
+	Graphene 1.1.0
 	https://github.com/lua-carbon/graphene
 ]]
 
