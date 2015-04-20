@@ -1,11 +1,17 @@
 --[[
-	Graphene 1.1.0-alpha2
+	Graphene 1.1.0-beta
 	https://github.com/lua-carbon/graphene
 ]]
 
 -- Current graphene version
-local g_version = {1, 1, 0, "alpha2"}
-local g_versionstring = ("%s.%s.%s-%s"):format((unpack or table.unpack)(g_version))
+local g_version = {1, 1, 0}
+local g_versionstring = ("%s.%s.%s%s%s"):format(
+	g_version[1],
+	g_version[2],
+	g_version[3],
+	g_version[4] and "-" or "",
+	g_version[4] or ""
+)
 
 -- Determine Lua capabilities and library support
 local support = {}

@@ -17,9 +17,12 @@ See [Rationale](docs/rationale.md) for an argument for, and potentially against 
 
 ## Support
 Graphene presently runs under the following platforms natively:
-- Lua 5.1+ with or without LuaFileSystem
+- Lua 5.1
+- Lua 5.2/5.3 with debug library
 - LuaJIT 2.0+
 - LÖVE 0.9.0+
+
+LuaFileSystem is required for advanced filesystem features like directory listing and directory importing. On 5.2 and 5.3, the debug library is required for imports to function due to changes in the environment system.
 
 Any platforms not officially supported can use the included virtual filesystem, which can also be used to pack a library up into a single file.
 
@@ -49,6 +52,6 @@ print(library.one.name) --> one
 [shield_license]: https://img.shields.io/badge/license-zlib/libpng-333333.svg?style=flat-square
 [shield_build]: https://img.shields.io/badge/build-unknown-lightgrey.svg?style=flat-square
 [shield_tests]: https://img.shields.io/badge/tests-0/0-lightgrey.svg?style=flat-square
-[shield_release_version]: https://img.shields.io/badge/release-1.0.1-brightgreen.svg?style=flat-square
-[shield_prerelease_version]: https://img.shields.io/badge/prerelease-1.1.0--alpha-blue.svg?style=flat-square
-[shield_dev_version]: https://img.shields.io/badge/development-1.1.0-orange.svg?style=flat-square
+[shield_release_version]: https://img.shields.io/badge/release-1.1.0-brightgreen.svg?style=flat-square
+[shield_prerelease_version]: https://img.shields.io/badge/prerelease-none-lightgrey.svg?style=flat-square
+[shield_dev_version]: https://img.shields.io/badge/development-1.2.0-orange.svg?style=flat-square
