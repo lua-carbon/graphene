@@ -1,6 +1,9 @@
 # Change Log
 
-![1.1.2](https://img.shields.io/badge/1.1.2-latest-brightgreen.svg?style=flat-square)
+![1.1.3](https://img.shields.io/badge/1.1.3-latest-brightgreen.svg?style=flat-square)
+- Fix :FullyLoad when called on the root element
+
+![1.1.2](https://img.shields.io/badge/1.1.2-unsupported-red.svg?style=flat-square)
 - Fix file loader for Lua 5.1
 
 ![1.1.1](https://img.shields.io/badge/1.1.1-unsupported-red.svg?style=flat-square)
