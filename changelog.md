@@ -1,6 +1,9 @@
 # Change Log
 
-![1.1.5](https://img.shields.io/badge/1.1.5-latest-brightgreen.svg?style=flat-square)
+![1.1.6](https://img.shields.io/badge/1.1.6-latest-brightgreen.svg?style=flat-square)
+- Fixed LOVE file detection
+
+![1.1.5](https://img.shields.io/badge/1.1.5-unsupported-red.svg?style=flat-square)
 - Fixed loading on Linux
 - Fixed FullyLoad loading from `..` on LOVE
 
