@@ -1,5 +1,8 @@
 # Change Log
 
+![1.1.7](https://img.shields.io/badge/1.1.7-latest-brightgreen.svg?style=flat-square)
+- Fixed extraneous debug print
+
 ![1.1.6](https://img.shields.io/badge/1.1.6-latest-brightgreen.svg?style=flat-square)
 - Fixed LOVE file detection
 
