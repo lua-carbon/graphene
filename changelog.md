@@ -1,6 +1,10 @@
 # Change Log
 
-![1.1.3](https://img.shields.io/badge/1.1.4-latest-brightgreen.svg?style=flat-square)
+![1.1.5](https://img.shields.io/badge/1.1.5-latest-brightgreen.svg?style=flat-square)
+- Fixed loading on Linux
+- Fixed FullyLoad loading from `..` on LOVE
+
+![1.1.4](https://img.shields.io/badge/1.1.4-unsupported-red.svg?style=flat-square)
 - Fixed Lua 5.1 compatibility
 
 ![1.1.3](https://img.shields.io/badge/1.1.3-unsupported-red.svg?style=flat-square)
