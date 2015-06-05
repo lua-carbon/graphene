@@ -1,9 +1,12 @@
 # Change Log
 
-![1.1.7](https://img.shields.io/badge/1.1.7-latest-brightgreen.svg?style=flat-square)
+![1.1.8](https://img.shields.io/badge/1.1.8-latest-brightgreen.svg?style=flat-square)
+- Fixed `MakeImportable` causing issues with init (`_`) files
+
+![1.1.7](https://img.shields.io/badge/1.1.7-unsupported-red.svg?style=flat-square)
 - Fixed extraneous debug print
 
-![1.1.6](https://img.shields.io/badge/1.1.6-latest-brightgreen.svg?style=flat-square)
+![1.1.6](https://img.shields.io/badge/1.1.6-unsupported-red.svg?style=flat-square)
 - Fixed LOVE file detection
 
 ![1.1.5](https://img.shields.io/badge/1.1.5-unsupported-red.svg?style=flat-square)
