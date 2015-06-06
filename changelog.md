@@ -1,7 +1,9 @@
 # Change Log
 
 ![1.1.9](https://img.shields.io/badge/1.1.9-latest-brightgreen.svg?style=flat-square)
+- Added `luajit`, `ffi` features
 - Fixed metadata to have weak keys
+- Deprecated `jit` feature
 - Deprecated internal VFS
 - Deprecated 'Lib' switch
 
