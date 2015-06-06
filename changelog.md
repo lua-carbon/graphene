@@ -1,6 +1,11 @@
 # Change Log
 
-![1.1.8](https://img.shields.io/badge/1.1.8-latest-brightgreen.svg?style=flat-square)
+![1.1.9](https://img.shields.io/badge/1.1.9-latest-brightgreen.svg?style=flat-square)
+- Fixed metadata to have weak keys
+- Deprecated internal VFS
+- Deprecated 'Lib' switch
+
+![1.1.8](https://img.shields.io/badge/1.1.8-unsupported-red.svg?style=flat-square)
 - Fixed `MakeImportable` causing issues with init (`_`) files
 
 ![1.1.7](https://img.shields.io/badge/1.1.7-unsupported-red.svg?style=flat-square)
