@@ -62,6 +62,6 @@ print(library.one.name) --> one
 [shield_license]: https://img.shields.io/badge/license-zlib/libpng-333333.svg?style=flat-square
 [shield_build]: https://img.shields.io/badge/build-unknown-lightgrey.svg?style=flat-square
 [shield_tests]: https://img.shields.io/badge/tests-0/0-lightgrey.svg?style=flat-square
-[shield_release_version]: https://img.shields.io/badge/release-1.1.9-brightgreen.svg?style=flat-square
+[shield_release_version]: https://img.shields.io/badge/release-1.1.10-brightgreen.svg?style=flat-square
 [shield_prerelease_version]: https://img.shields.io/badge/prerelease-none-lightgrey.svg?style=flat-square
 [shield_dev_version]: https://img.shields.io/badge/development-1.2.0_/%202.0.0-orange.svg?style=flat-square

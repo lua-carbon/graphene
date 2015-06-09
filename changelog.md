@@ -1,6 +1,9 @@
 # Change Log
 
-![1.1.9](https://img.shields.io/badge/1.1.9-latest-brightgreen.svg?style=flat-square)
+![1.1.10](https://img.shields.io/badge/1.1.10-latest-brightgreen.svg?style=flat-square)
+- Fixed issue with nested submodules due to submodule path specificity
+
+![1.1.9](https://img.shields.io/badge/1.1.9-unsupported-red.svg?style=flat-square)
 - Added `luajit`, `ffi` features
 - Fixed metadata to have weak keys
 - Deprecated `jit` feature
