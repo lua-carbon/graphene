@@ -1,6 +1,10 @@
 # Change Log
 
-![1.1.10](https://img.shields.io/badge/1.1.10-latest-brightgreen.svg?style=flat-square)
+![1.1.11](https://img.shields.io/badge/1.1.11-latest-brightgreen.svg?style=flat-square)
+- Fixed directory objects being polluted by Graphene fields
+- Added `G:MakeLightImportable` for making a lighter-footprint importable
+
+![1.1.10](https://img.shields.io/badge/1.1.10-unsupported-red.svg?style=flat-square)
 - Fixed issue with nested submodules due to submodule path specificity
 
 ![1.1.9](https://img.shields.io/badge/1.1.9-unsupported-red.svg?style=flat-square)
